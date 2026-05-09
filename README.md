@@ -8,7 +8,7 @@
 - 旅行与照片
 - 游戏与记录
 
-项目现在只保留静态博客本体，不再包含本地写作提交页面或本地发布服务。
+项目线上只保留静态博客本体；本地额外提供一个发布后台，用来把 Markdown 日记转换成 HTML 并推送到 GitHub Pages。
 
 ## 发布到 GitHub Pages
 
@@ -52,7 +52,16 @@ GitHub 官方说明：[创建 GitHub Pages 站点](https://docs.github.com/en/pa
 
 ## 写文章
 
-新文章走普通静态文件流程：
+推荐使用本地发布后台：
+
+```powershell
+cd /d D:\qianmeng-blog
+start-blog-admin.bat
+```
+
+启动后会打开本地页面 `http://127.0.0.1:4173/`。你可以在 Typora 里编辑 `content/inbox/` 下的 Markdown，保存后回到这个页面点击“发布到 GitHub”。
+
+也可以走命令行流程：
 
 1. 复制 `templates/post-template.html` 到 `posts/<slug>.html`。
 2. 修改标题、日期、板块、摘要和正文。

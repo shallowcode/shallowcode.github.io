@@ -43,6 +43,28 @@ summary: 这是一篇首页摘要，会显示在文章卡片和时间线里。
 - `album: true`：把封面图同步加到首页照片墙
 - `album_class: tall` 或 `wide`：照片墙里的图片样式
 
+## 本地发布后台
+
+双击项目根目录里的 `start-blog-admin.bat`，或者在终端运行：
+
+```powershell
+cd /d D:\qianmeng-blog
+python scripts\blog_admin.py
+```
+
+后台会打开：
+
+```text
+http://127.0.0.1:4173/
+```
+
+日常流程：
+
+1. 在后台点“新建并打开”，系统会在 `content/inbox/` 创建 Markdown。
+2. Typora 打开后，正常写日记并保存。
+3. 回到后台页面，点击“发布到 GitHub”。
+4. 后台会自动转换 HTML、更新首页、创建 Git commit、推送到 GitHub Pages。
+
 发布命令：
 
 ```powershell
