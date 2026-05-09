@@ -45,7 +45,7 @@ def git_output(args: list[str]) -> str:
 
 
 def status_paths() -> list[str]:
-    output = git_output(["status", "--porcelain=v1"])
+    output = run_git(["status", "--porcelain=v1"]).stdout.rstrip("\n")
     paths: list[str] = []
     for line in output.splitlines():
         if not line:
