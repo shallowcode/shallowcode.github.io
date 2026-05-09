@@ -140,6 +140,8 @@ def sidebar_links(posts: list[PostInfo], current: PostInfo, same_category: bool)
     ][:5]
     if not selected:
         selected = [post for post in posts if post.href != current.href][:5]
+    if not selected:
+        return '            <li class="empty-note">暂无其他文章</li>'
     return "\n".join(
         f'            <li><a href="{html.escape(post.filename, quote=True)}">{html.escape(post.title, quote=False)}</a></li>'
         for post in selected

@@ -419,7 +419,7 @@ h3 {
 
 .post-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 16px;
 }
 
@@ -848,6 +848,30 @@ h3 {
   gap: 14px;
 }
 
+.hero-note-panel {
+  display: flex;
+  min-height: 360px;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 22px;
+  padding: 30px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  box-shadow: var(--shadow);
+}
+
+.hero-note-panel h2 {
+  max-width: 460px;
+  font-size: 2rem;
+}
+
+.hero-note-panel p:not(.eyebrow) {
+  max-width: 520px;
+  margin: 0;
+  color: var(--muted);
+}
+
 .mosaic-card {
   position: relative;
   min-height: 210px;
@@ -951,7 +975,7 @@ h3 {
 }
 
 .magazine-grid {
-  grid-template-columns: 1.1fr 0.95fr 0.95fr;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
 }
 
 .cover-post {
