@@ -63,7 +63,7 @@ http://127.0.0.1:4173/
 1. 在后台点“新建并打开”，系统会在 `content/inbox/` 创建 Markdown。
 2. Typora 打开后，正常写日记并保存。
 3. 回到后台页面，点击“发布到 GitHub”。
-4. 后台会自动转换 HTML、更新首页、创建 Git commit、推送到 GitHub Pages。
+4. 后台会自动转换 HTML、更新首页、刷新板块页和文章导航、创建 Git commit、推送到 GitHub Pages。
 
 发布命令：
 
@@ -72,7 +72,7 @@ cd /d D:\qianmeng-blog
 python scripts\publish_md.py content\inbox\2026-05-09-my-post.md
 ```
 
-这个命令会生成 `posts/<slug>.html`，并更新 `index.html` 的文章列表和时间线。如果文章已存在，需要覆盖时加 `--force`。
+这个命令会生成 `posts/<slug>.html`，并更新 `index.html` 的文章列表和时间线，同时刷新 `boards/` 下的板块页和文章页上一篇/下一篇。如果文章已存在，需要覆盖时加 `--force`。
 
 一键发布并推送到 GitHub：
 

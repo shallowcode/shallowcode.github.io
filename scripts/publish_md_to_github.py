@@ -7,6 +7,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import publish_md
+import rebuild_blog_pages
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -168,8 +169,9 @@ def main() -> int:
     post = publish_md.build_post(md_path, copy_images=True)
     post_path.write_text(publish_md.render_article(post), encoding="utf-8")
     publish_md.update_index(post)
+    rebuild_blog_pages.rebuild_all()
 
-    stage_paths = [md_path, post_path, publish_md.INDEX_PATH, upload_dir, *source_assets]
+    stage_paths = [md_path, publish_md.POSTS_DIR, publish_md.INDEX_PATH, ROOT / "boards", upload_dir, *source_assets]
     stage_existing(stage_paths)
 
     diff_check = run_git(["diff", "--cached", "--quiet"], check=False)

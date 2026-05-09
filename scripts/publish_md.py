@@ -426,8 +426,8 @@ def update_index(post: Post) -> None:
         '          <article class="timeline-item">\n'
         f'            <time datetime="{post.date}">{date_display}</time>\n'
         "            <div>\n"
-        f"              <h3>{html.escape(post.title, quote=False)}</h3>\n"
-        f"              <p>{html.escape(post.timeline, quote=False)}</p>\n"
+        f'              <h3><a href="posts/{slug}.html">{html.escape(post.title, quote=False)}</a></h3>\n'
+        f"              <p>{category_cn}</p>\n"
         "            </div>\n"
         "          </article>"
     )
@@ -435,7 +435,7 @@ def update_index(post: Post) -> None:
     content = insert_after_marker(content, "          <!-- POST_CARDS_START -->", post_card, link)
     content = insert_after_marker(content, "          <!-- TIMELINE_START -->", timeline_item, f"<h3>{html.escape(post.title, quote=False)}</h3>")
 
-    if post.album and post.cover:
+    if post.album and post.cover and "          <!-- ALBUM_START -->" in content:
         cover_src = index_src(copy_image_if_local(post.cover, ROOT / "content" / "inbox" / "dummy.md", post.slug))
         class_attr = f" {post.album_class}" if post.album_class else ""
         caption = post.cover_caption or post.cover_alt or post.title
@@ -482,6 +482,8 @@ def main() -> int:
     post_path.write_text(article_html, encoding="utf-8")
     if not args.no_index:
         update_index(post)
+        import rebuild_blog_pages
+        rebuild_blog_pages.rebuild_all()
 
     print(f"Published {md_path.relative_to(ROOT)}")
     print(f"Post: {post_path.relative_to(ROOT)}")
