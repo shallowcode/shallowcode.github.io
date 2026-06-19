@@ -33,6 +33,7 @@ class Post:
     summary: str
     timeline: str
     cover: str
+    cover_src: str
     cover_alt: str
     cover_caption: str
     album: bool
@@ -85,7 +86,7 @@ def text_without_markdown(markdown: str) -> str:
 
 
 def first_heading(markdown: str) -> str:
-    match = re.search(r"^#\s+(.+)$", markdown, flags=re.M)
+    match = re.search(r"^#{1,6}\s+(.+)$", markdown, flags=re.M)
     return match.group(1).strip() if match else ""
 
 
@@ -151,7 +152,13 @@ def parse_link_target(target: str) -> tuple[str, str]:
     return match.group(1), match.group(2) or ""
 
 
-def inline_markdown(text: str, md_path: Path, slug: str, copy_images: bool = True) -> str:
+def inline_markdown(
+    text: str,
+    md_path: Path,
+    slug: str,
+    copy_images: bool = True,
+    block_images: bool = False,
+) -> str:
     stash: list[str] = []
 
     def token(value: str) -> str:
@@ -165,12 +172,15 @@ def inline_markdown(text: str, md_path: Path, slug: str, copy_images: bool = Tru
         caption_text = caption or alt
         escaped_alt = html.escape(alt, quote=True)
         escaped_src = html.escape(src, quote=True)
-        if caption_text:
-            escaped_caption = html.escape(caption_text, quote=True)
+        if block_images:
+            caption_html = ""
+            if caption_text:
+                escaped_caption = html.escape(caption_text, quote=False)
+                caption_html = f"          <figcaption>{escaped_caption}</figcaption>\n"
             return token(
-                '<figure class="article-photo">\n'
+                '        <figure class="article-photo">\n'
                 f'          <img src="{escaped_src}" alt="{escaped_alt}">\n'
-                f"          <figcaption>{escaped_caption}</figcaption>\n"
+                f"{caption_html}"
                 "        </figure>"
             )
         return token(f'<img src="{escaped_src}" alt="{escaped_alt}">')
@@ -264,6 +274,15 @@ def markdown_to_html(markdown: str, md_path: Path, slug: str, copy_images: bool 
             close_quote(output, quote_lines, md_path, slug, copy_images)
             continue
 
+        stripped_line = line.strip()
+        standalone_image = re.match(r"^!\[[^\]]*\]\([^)]+\)$", stripped_line)
+        if standalone_image:
+            close_paragraph(output, paragraph, md_path, slug, copy_images)
+            close_list(output, list_items, list_ordered, md_path, slug, copy_images)
+            close_quote(output, quote_lines, md_path, slug, copy_images)
+            output.append(inline_markdown(stripped_line, md_path, slug, copy_images, block_images=True))
+            continue
+
         heading = re.match(r"^(#{1,6})\s+(.+)$", line)
         if heading:
             close_paragraph(output, paragraph, md_path, slug, copy_images)
@@ -321,7 +340,7 @@ def build_post(path: Path, copy_images: bool = True) -> Post:
     if not title:
         fail("missing title. Add title in front matter or use a top-level # heading.")
     if body_heading and body_heading == title:
-        markdown = re.sub(r"^#\s+.+\r?\n?", "", markdown, count=1, flags=re.M).strip()
+        markdown = re.sub(r"^#{1,6}\s+.+\r?\n?", "", markdown, count=1, flags=re.M).strip()
 
     post_date = meta.get("date") or date.today().isoformat()
     category = meta.get("category", "essay").strip().lower()
@@ -332,6 +351,7 @@ def build_post(path: Path, copy_images: bool = True) -> Post:
     summary = meta.get("summary") or first_paragraph(markdown)[:86]
     timeline = meta.get("timeline") or summary
     cover = meta.get("cover", "")
+    cover_src = ""
     cover_alt = meta.get("cover_alt") or title
     cover_caption = meta.get("cover_caption", "")
     album = is_true(meta.get("album", "false"))
@@ -353,7 +373,9 @@ def build_post(path: Path, copy_images: bool = True) -> Post:
             f"{caption_html}\n"
             "        </figure>"
         )
-        body_html = re.sub(r"(        <p>.*?</p>)", rf"\1\n\n{cover_html}", body_html, count=1, flags=re.S)
+        body_html, count = re.subn(r"(        <p>.*?</p>)", rf"\1\n\n{cover_html}", body_html, count=1, flags=re.S)
+        if count == 0:
+            body_html = f"{cover_html}\n\n{body_html}" if body_html else cover_html
 
     return Post(
         title=title,
@@ -363,6 +385,7 @@ def build_post(path: Path, copy_images: bool = True) -> Post:
         summary=summary,
         timeline=timeline,
         cover=cover,
+        cover_src=cover_src,
         cover_alt=cover_alt,
         cover_caption=cover_caption,
         album=album,
@@ -409,6 +432,27 @@ def insert_after_marker(content: str, marker: str, snippet: str, unique: str) ->
     return content.replace(marker, f"{marker}\n{snippet}", 1)
 
 
+def update_latest_panel(content: str, post: Post, link: str) -> str:
+    latest_panel = (
+        '        <aside class="hero-note-panel" aria-label="最新文章">\n'
+        '          <p class="eyebrow">Latest</p>\n'
+        f"          <h2>{html.escape(post.title, quote=False)}</h2>\n"
+        f"          <p>{html.escape(post.summary, quote=False)}</p>\n"
+        f'          <a class="text-link" href="{html.escape(link, quote=True)}">继续阅读</a>\n'
+        "        </aside>"
+    )
+    updated, count = re.subn(
+        r'        <aside class="hero-note-panel" aria-label="最新文章">.*?        </aside>',
+        latest_panel,
+        content,
+        count=1,
+        flags=re.S,
+    )
+    if count == 0:
+        fail("missing latest article panel in index.html")
+    return updated
+
+
 def update_index(post: Post) -> None:
     content = INDEX_PATH.read_text(encoding="utf-8")
     category_cn, _ = CATEGORIES[post.category]
@@ -426,17 +470,18 @@ def update_index(post: Post) -> None:
         '          <article class="timeline-item">\n'
         f'            <time datetime="{post.date}">{date_display}</time>\n'
         "            <div>\n"
-        f'              <h3><a href="posts/{slug}.html">{html.escape(post.title, quote=False)}</a></h3>\n'
+        f'              <h3><a href="{link}">{html.escape(post.title, quote=False)}</a></h3>\n'
         f"              <p>{category_cn}</p>\n"
         "            </div>\n"
         "          </article>"
     )
 
-    content = insert_after_marker(content, "          <!-- POST_CARDS_START -->", post_card, link)
-    content = insert_after_marker(content, "          <!-- TIMELINE_START -->", timeline_item, f"<h3>{html.escape(post.title, quote=False)}</h3>")
+    content = insert_after_marker(content, "          <!-- POST_CARDS_START -->", post_card, f'            <h3><a href="{link}">')
+    content = insert_after_marker(content, "          <!-- TIMELINE_START -->", timeline_item, f'              <h3><a href="{link}">')
+    content = update_latest_panel(content, post, link)
 
-    if post.album and post.cover and "          <!-- ALBUM_START -->" in content:
-        cover_src = index_src(copy_image_if_local(post.cover, ROOT / "content" / "inbox" / "dummy.md", post.slug))
+    if post.album and post.cover_src and "          <!-- ALBUM_START -->" in content:
+        cover_src = index_src(post.cover_src)
         class_attr = f" {post.album_class}" if post.album_class else ""
         caption = post.cover_caption or post.cover_alt or post.title
         album_item = (
@@ -448,6 +493,105 @@ def update_index(post: Post) -> None:
         content = insert_after_marker(content, "          <!-- ALBUM_START -->", album_item, cover_src)
 
     INDEX_PATH.write_text(content, encoding="utf-8")
+
+
+def _strip_index_blocks(content: str, block_pattern: str, needle: str) -> tuple[str, int]:
+    """Remove whole HTML blocks (and their leading indentation) that contain ``needle``."""
+    pieces: list[str] = []
+    last = 0
+    removed = 0
+    for match in re.finditer(block_pattern, content, flags=re.S):
+        if needle not in match.group(0):
+            continue
+        start = match.start()
+        line_start = content.rfind("\n", 0, start)
+        cut = line_start if line_start != -1 else start
+        pieces.append(content[last:cut])
+        last = match.end()
+        removed += 1
+    pieces.append(content[last:])
+    return "".join(pieces), removed
+
+
+def _placeholder_latest_panel() -> str:
+    return (
+        '        <aside class="hero-note-panel" aria-label="最新文章">\n'
+        '          <p class="eyebrow">Latest</p>\n'
+        "          <h2>还没有文章</h2>\n"
+        "          <p>发布第一篇文章后，这里会显示最新内容。</p>\n"
+        "        </aside>"
+    )
+
+
+def refresh_latest_panel(content: str) -> str:
+    """Point the homepage 'latest article' panel at the newest remaining post-card."""
+    card = re.search(
+        r'<article class="post-card(?:[^"]*)" data-category="[^"]*">(?P<body>.*?)</article>',
+        content,
+        flags=re.S,
+    )
+    link = None
+    if card:
+        link = re.search(
+            r'<h3>\s*<a href="(?P<href>[^"]+)">(?P<title>.*?)</a>\s*</h3>',
+            card.group("body"),
+            flags=re.S,
+        )
+    if not card or not link:
+        panel = _placeholder_latest_panel()
+    else:
+        paragraphs = re.findall(r"<p(?: [^>]*)?>(.*?)</p>", card.group("body"), flags=re.S)
+        href = link.group("href")
+        title = link.group("title").strip()
+        summary = paragraphs[-1].strip() if paragraphs else ""
+        panel = (
+            '        <aside class="hero-note-panel" aria-label="最新文章">\n'
+            '          <p class="eyebrow">Latest</p>\n'
+            f"          <h2>{title}</h2>\n"
+            f"          <p>{summary}</p>\n"
+            f'          <a class="text-link" href="{href}">继续阅读</a>\n'
+            "        </aside>"
+        )
+    updated, count = re.subn(
+        r'        <aside class="hero-note-panel" aria-label="最新文章">.*?        </aside>',
+        lambda _match: panel,
+        content,
+        count=1,
+        flags=re.S,
+    )
+    return updated if count else content
+
+
+def remove_from_index(slug: str) -> bool:
+    """Remove a post's card, timeline row and album figure from index.html.
+
+    Returns True when index.html actually changed.
+    """
+    if not INDEX_PATH.exists():
+        return False
+    content = INDEX_PATH.read_text(encoding="utf-8")
+    original = content
+    href = f"posts/{slug}.html"
+    content, _ = _strip_index_blocks(
+        content,
+        r'<article class="post-card(?:[^"]*)" data-category="[^"]*">.*?</article>',
+        f'href="{href}"',
+    )
+    content, _ = _strip_index_blocks(
+        content,
+        r'<article class="timeline-item">.*?</article>',
+        f'href="{href}"',
+    )
+    content, _ = _strip_index_blocks(
+        content,
+        r'<figure class="photo-card(?:[^"]*)">.*?</figure>',
+        f'assets/uploads/{slug}/',
+    )
+    content = refresh_latest_panel(content)
+    if content != original:
+        INDEX_PATH.write_text(content, encoding="utf-8")
+        return True
+    return False
 
 
 def main() -> int:

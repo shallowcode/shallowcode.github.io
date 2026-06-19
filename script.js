@@ -1,21 +1,8 @@
-const root = document.documentElement;
 const progressBar = document.querySelector(".progress-bar");
-const themeToggle = document.querySelector(".theme-toggle");
 const filterButtons = document.querySelectorAll(".filter-button");
 const postCards = document.querySelectorAll(".post-card");
 const navLinks = document.querySelectorAll(".nav-links a");
 const sections = [...document.querySelectorAll("main section[id]")];
-
-const savedTheme = localStorage.getItem("blog-theme");
-if (savedTheme === "dark" || savedTheme === "light") {
-  root.dataset.theme = savedTheme;
-}
-
-themeToggle?.addEventListener("click", () => {
-  const nextTheme = root.dataset.theme === "dark" ? "light" : "dark";
-  root.dataset.theme = nextTheme;
-  localStorage.setItem("blog-theme", nextTheme);
-});
 
 filterButtons.forEach((button) => {
   button.addEventListener("click", () => {
@@ -43,7 +30,8 @@ const updateScrollState = () => {
     .at(-1);
 
   navLinks.forEach((link) => {
-    link.classList.toggle("active", current && link.hash === `#${current.id}`);
+    const isActive = !!current && link.hash === `#${current.id}`;
+    link.classList.toggle("active", isActive);
   });
 };
 

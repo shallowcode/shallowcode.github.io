@@ -61,6 +61,15 @@ start-blog-admin.bat
 
 启动后会打开本地页面 `http://127.0.0.1:4173/`。你可以在 Typora 里编辑 `content/inbox/` 下的 Markdown，保存后回到这个页面点击“发布到 GitHub”。
 
+## 删除文章
+
+在发布后台每篇文章卡片右下角点“删除”，会先弹出确认再执行：
+
+- 已发布的文章：从 `index.html`、板块页和 `posts/` 中移除，删掉对应的 Markdown 和图片，然后自动提交并推送到 GitHub，线上站点随之更新。
+- 未发布的草稿：只删除本地的 Markdown（及它的图片），不动 GitHub。
+
+命令行等价操作：`python scripts\unpublish_md_from_github.py content\inbox\<slug>.md`（加 `--keep-markdown` 可只下线、保留本地草稿；加 `--no-push` 只在本地提交不推送）。
+
 也可以走命令行流程：
 
 1. 复制 `templates/post-template.html` 到 `posts/<slug>.html`。
