@@ -192,8 +192,7 @@ p { margin: 0; }
   grid-template-columns: minmax(0, 1fr) minmax(330px, 0.86fr);
   gap: 54px;
   align-items: center;
-  min-height: calc(100vh - 140px);
-  padding: 64px 0 56px;
+  padding: 72px 0 64px;
 }
 
 .journal-hero h1 { max-width: 12ch; }
@@ -441,10 +440,9 @@ p { margin: 0; }
 .board-card {
   position: relative;
   display: flex;
-  min-height: 250px;
-  flex-direction: column;
-  gap: 14px;
-  padding: 28px;
+  align-items: center;
+  min-height: 96px;
+  padding: 26px 30px;
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: var(--radius);
