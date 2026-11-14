@@ -328,15 +328,13 @@ def board_icon(category: str) -> str:
 
 
 def board_entry(category: str, posts: list[PostInfo]) -> str:
-    title, _, _, description = CATEGORIES[category]
+    title, _, _, _ = CATEGORIES[category]
     count = sum(1 for post in posts if post.category == category)
-    count_text = f"{count} 篇" if count else "还没有文章"
     return (
         f'          <a class="board-card" data-board="{category}" data-category="{category}" href="boards/{category}.html">\n'
         f"            {board_icon(category)}\n"
         f"            <h3>{title}</h3>\n"
-        f'            <p class="board-desc">{description}</p>\n'
-        f'            <p class="board-count">{count_text}</p>\n'
+        f'            <p class="board-count">{count}</p>\n'
         "          </a>"
     )
 
@@ -425,7 +423,7 @@ def render_board_page(category: str, posts: list[PostInfo]) -> str:
     board_posts = [post for post in posts if post.category == category]
     post_list = "\n".join(board_card(post) for post in board_posts)
     if not post_list:
-        post_list = '        <p class="empty-note">这个板块还在等第一篇文章。</p>'
+        post_list = '        <p class="empty-note">还没有文章</p>'
     count = f"{len(board_posts)} 篇" if board_posts else "还没有文章"
     body = f"""    <main id="main" class="board-main" data-category="{category}">
       <a class="back-link" href="../index.html">返回首页</a>
@@ -433,7 +431,6 @@ def render_board_page(category: str, posts: list[PostInfo]) -> str:
         {board_icon(category)}
         <p class="eyebrow">{category_en} · {count}</p>
         <h1>{title}</h1>
-        <p>{description}</p>
       </header>
       <section class="board-post-list board-{category}" aria-label="{title}文章列表">
 {post_list}

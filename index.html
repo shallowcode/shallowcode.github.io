@@ -52,16 +52,55 @@
     </header>
 
     <main id="main">
-      <h1 class="sr-only">浅梦的个人博客</h1>
+      <section class="home-hero">
+        <svg class="home-art" viewBox="0 0 1200 300" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+          <circle class="art-sun" cx="930" cy="96" r="46"/>
+          <g class="art-cloud">
+            <path d="M210 92a26 26 0 0 1 50-8 20 20 0 0 1 30 18h-92a14 14 0 0 1 12-10z"/>
+            <path d="M700 60a20 20 0 0 1 38-6 16 16 0 0 1 24 14h-72a11 11 0 0 1 10-8z"/>
+          </g>
+          <path class="art-hill-3" d="M0 214c120-70 240-92 380-50s250 46 400 4 280-60 420-8v140H0z"/>
+          <path class="art-hill-2" d="M0 250c160-56 300-58 450-22s300 30 440-8 220-30 310 0v80H0z"/>
+          <g class="art-trees">
+            <path d="M286 222l16-40 16 40zM292 204l10-28 10 28z"/><rect x="300" y="220" width="4" height="12"/>
+            <path d="M336 232l12-30 12 30zM340 218l8-22 8 22z"/><rect x="346" y="230" width="4" height="10"/>
+            <path d="M842 214l14-36 14 36zM847 198l9-25 9 25z"/><rect x="854" y="212" width="4" height="12"/>
+          </g>
+          <g class="art-house">
+            <path class="art-roof" d="M560 208l44-34 44 34z"/>
+            <rect class="art-wall" x="570" y="208" width="68" height="40" rx="2"/>
+            <rect class="art-door" x="597" y="224" width="14" height="24" rx="2"/>
+            <rect class="art-window" x="578" y="218" width="12" height="12" rx="2"/>
+            <rect class="art-window" x="618" y="218" width="12" height="12" rx="2"/>
+          </g>
+          <path class="art-hill-1" d="M0 276c200-44 380-40 600-16s400 18 600-12v52H0z"/>
+        </svg>
+        <h1>浅梦</h1>
+      </section>
 
-      <section id="posts" class="content-section writing-section">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Recommended</p>
-            <h2>推荐阅读</h2>
-          </div>
-        </div>
-        <div class="post-grid magazine-grid">
+      <nav id="boards" class="home-boards" aria-label="板块">
+        <!-- BOARDS_START -->
+          <a class="board-card" data-board="essay" data-category="essay" href="boards/essay.html">
+            <svg class="board-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h11a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6z"/><path d="M6 3v18M4 7h2M4 12h2M4 17h2M10 8h5M10 12h5"/></svg>
+            <h3>日记</h3>
+            <p class="board-count">1</p>
+          </a>
+          <a class="board-card" data-board="travel" data-category="travel" href="boards/travel.html">
+            <svg class="board-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 19l6-10 4 6 2-3 6 7z"/><circle cx="17" cy="6" r="2"/></svg>
+            <h3>旅行</h3>
+            <p class="board-count">0</p>
+          </a>
+          <a class="board-card" data-board="game" data-category="game" href="boards/game.html">
+            <svg class="board-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 8h10a4 4 0 0 1 4 4v2a3 3 0 0 1-5.4 1.8L14.5 15h-5l-1.1.8A3 3 0 0 1 3 14v-2a4 4 0 0 1 4-4z"/><path d="M8 11v3M6.5 12.5h3M15.5 11.5h.01M17.5 13.5h.01"/></svg>
+            <h3>游戏</h3>
+            <p class="board-count">0</p>
+          </a>
+        <!-- BOARDS_END -->
+      </nav>
+
+      <section id="posts" class="content-section home-posts">
+        <h2 class="home-heading">最近</h2>
+        <div class="post-grid">
           <!-- POST_CARDS_START -->
           <article class="post-card" data-category="essay">
             <p class="post-meta">日记 · 2026.05.09</p>
@@ -69,57 +108,6 @@
             <p>总是在感觉过度准备，背了又忘，也不知道是在理解知识还是背诵知识。</p>
           </article>
           <!-- POST_CARDS_END -->
-        </div>
-      </section>
-
-      <section id="timeline" class="content-section timeline-section">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Timeline</p>
-            <h2>时间线</h2>
-          </div>
-        </div>
-        <div class="timeline compact-timeline">
-          <!-- TIMELINE_START -->
-          <article class="timeline-item" data-category="essay">
-            <time datetime="2026-05-09">2026.05.09</time>
-            <div>
-              <h3><a href="posts/example-note.html">找实习好难</a></h3>
-              <p>日记</p>
-            </div>
-          </article>
-          <!-- TIMELINE_END -->
-        </div>
-      </section>
-
-      <section id="boards" class="content-section">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Boards</p>
-            <h2>板块入口</h2>
-          </div>
-        </div>
-        <div class="board-grid">
-          <!-- BOARDS_START -->
-          <a class="board-card" data-board="essay" data-category="essay" href="boards/essay.html">
-            <svg class="board-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h11a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6z"/><path d="M6 3v18M4 7h2M4 12h2M4 17h2M10 8h5M10 12h5"/></svg>
-            <h3>日记</h3>
-            <p class="board-desc">写给自己的日常：当天的事、当时的心情。</p>
-            <p class="board-count">1 篇</p>
-          </a>
-          <a class="board-card" data-board="travel" data-category="travel" href="boards/travel.html">
-            <svg class="board-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 19l6-10 4 6 2-3 6 7z"/><circle cx="17" cy="6" r="2"/></svg>
-            <h3>旅行</h3>
-            <p class="board-desc">照片、路线和路上的片段。</p>
-            <p class="board-count">还没有文章</p>
-          </a>
-          <a class="board-card" data-board="game" data-category="game" href="boards/game.html">
-            <svg class="board-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 8h10a4 4 0 0 1 4 4v2a3 3 0 0 1-5.4 1.8L14.5 15h-5l-1.1.8A3 3 0 0 1 3 14v-2a4 4 0 0 1 4-4z"/><path d="M8 11v3M6.5 12.5h3M15.5 11.5h.01M17.5 13.5h.01"/></svg>
-            <h3>游戏</h3>
-            <p class="board-desc">玩过的游戏：评分、优缺点和记住的瞬间。</p>
-            <p class="board-count">还没有文章</p>
-          </a>
-          <!-- BOARDS_END -->
         </div>
       </section>
     </main>
