@@ -3,14 +3,14 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>旅行与照片 | 浅梦</title>
-    <meta name="description" content="把照片、路线和路上的片段整理到一起。">
+    <title>旅行 | 浅梦</title>
+    <meta name="description" content="照片、路线和路上的片段。">
     <meta name="theme-color" content="#f7f1e4">
     <link rel="canonical" href="https://shallowcode.github.io/boards/travel.html">
     <meta property="og:site_name" content="浅梦">
     <meta property="og:type" content="website">
-    <meta property="og:title" content="旅行与照片 | 浅梦">
-    <meta property="og:description" content="把照片、路线和路上的片段整理到一起。">
+    <meta property="og:title" content="旅行 | 浅梦">
+    <meta property="og:description" content="照片、路线和路上的片段。">
     <meta property="og:url" content="https://shallowcode.github.io/boards/travel.html">
     <meta property="og:locale" content="zh_CN">
     <link rel="icon" href="../favicon.svg" type="image/svg+xml">
@@ -39,9 +39,9 @@
         </div>
         <div class="nav-actions">
           <div class="nav-links">
-            <a href="../boards/essay.html">随笔</a>
-            <a href="../boards/travel.html" aria-current="page">旅行</a>
-            <a href="../boards/game.html">游戏</a>
+            <a href="../boards/essay.html" data-category="essay">日记</a>
+            <a href="../boards/travel.html" data-category="travel" aria-current="page">旅行</a>
+            <a href="../boards/game.html" data-category="game">游戏</a>
           </div>
           <button class="theme-toggle" type="button" aria-label="切换深色模式">
             <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a7 7 0 1 0 10.5 10.5z"/></svg>
@@ -51,14 +51,15 @@
       </nav>
     </header>
 
-    <main id="main" class="board-main">
+    <main id="main" class="board-main" data-category="travel">
       <a class="back-link" href="../index.html">返回首页</a>
       <header class="board-page-header">
-        <p class="eyebrow">Travel</p>
-        <h1>旅行与照片</h1>
-        <p>把照片、路线和路上的片段整理到一起。</p>
+        <svg class="board-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 19l6-10 4 6 2-3 6 7z"/><circle cx="17" cy="6" r="2"/></svg>
+        <p class="eyebrow">Travel · 还没有文章</p>
+        <h1>旅行</h1>
+        <p>照片、路线和路上的片段。</p>
       </header>
-      <section class="board-post-list" aria-label="旅行与照片文章列表">
+      <section class="board-post-list board-travel" aria-label="旅行文章列表">
         <p class="empty-note">这个板块还在等第一篇文章。</p>
       </section>
     </main>

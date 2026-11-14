@@ -19,9 +19,9 @@ Use this skill for the `D:\qianmeng-blog` project when the user wants to create,
 
 Sections:
 
-- `essay`: 感悟与随笔
-- `travel`: 旅行与照片
-- `game`: 游戏与记录
+- `essay`: 日记
+- `travel`: 旅行
+- `game`: 游戏
 
 ## Workflow
 

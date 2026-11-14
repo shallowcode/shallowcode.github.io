@@ -27,13 +27,13 @@ FEED_PATH = ROOT / "feed.xml"
 
 SITE_URL = "https://shallowcode.github.io"
 SITE_NAME = "浅梦"
-SITE_DESCRIPTION = "浅梦的个人博客，记录随笔、旅行、游戏和生活里的片段。"
+SITE_DESCRIPTION = "浅梦的个人博客，记录日记、旅行、游戏和生活里的片段。"
 FEED_TIMEZONE = "+08:00"
 
 CATEGORIES = {
-    "essay": ("感悟与随笔", "随笔", "Essay", "写一些不一定完整、但当时很真实的想法。"),
-    "travel": ("旅行与照片", "旅行", "Travel", "把照片、路线和路上的片段整理到一起。"),
-    "game": ("游戏与记录", "游戏", "Game", "记录游戏里的截图、感受和那些停留很久的瞬间。"),
+    "essay": ("日记", "日记", "Diary", "写给自己的日常：当天的事、当时的心情。"),
+    "travel": ("旅行", "旅行", "Travel", "照片、路线和路上的片段。"),
+    "game": ("游戏", "游戏", "Game", "玩过的游戏：评分、优缺点和记住的瞬间。"),
 }
 
 # Sets the theme before first paint so dark mode never flashes light.
@@ -65,6 +65,9 @@ class PostInfo:
     title: str
     href: str
     summary: str
+    cover: str = ""   # image path relative to the site root, e.g. assets/uploads/<slug>/a.jpg
+    place: str = ""   # travel posts
+    rating: str = ""  # game posts, 0-10
 
     @property
     def filename(self) -> str:
@@ -84,6 +87,56 @@ def strip_tags(value: str) -> str:
     return html.unescape(re.sub(r"\s+", " ", value).strip())
 
 
+WEEKDAYS = "一二三四五六日"
+
+
+def weekday_cn(date_attr: str) -> str:
+    try:
+        return "星期" + WEEKDAYS[date.fromisoformat(date_attr).weekday()]
+    except ValueError:
+        return ""
+
+
+def clean_rating(value: str) -> str:
+    """Normalise a 0-10 score to at most one decimal; anything else becomes ''."""
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return ""
+    if not 0 <= number <= 10:
+        return ""
+    return f"{number:.1f}".rstrip("0").rstrip(".")
+
+
+def rating_label(rating: str) -> str:
+    number = float(rating)
+    for threshold, label in ((9.5, "神作"), (8.5, "力荐"), (7.5, "优秀"), (6.5, "不错"), (5.5, "一般"), (4, "失望")):
+        if number >= threshold:
+            return label
+    return "劝退"
+
+
+def card_attrs(post: "PostInfo") -> str:
+    attrs = f' data-category="{esc(post.category, True)}"'
+    for name in ("cover", "place", "rating"):
+        value = getattr(post, name)
+        if value:
+            attrs += f' data-{name}="{esc(value, True)}"'
+    return attrs
+
+
+def card_meta(post: "PostInfo") -> str:
+    _, category_cn, _, _ = category_names(post.category)
+    parts = [category_cn, esc(post.place) if post.place else "", post.date_text]
+    return " · ".join(part for part in parts if part)
+
+
+def score_badge(post: "PostInfo", indent: str) -> str:
+    if not post.rating:
+        return ""
+    return f'{indent}<span class="score-badge" aria-label="评分 {post.rating}，满分 10">{post.rating}</span>\n'
+
+
 def category_names(category: str) -> tuple[str, str, str, str]:
     return CATEGORIES.get(category, (category, category, category.title(), ""))
 
@@ -94,7 +147,7 @@ def parse_posts(content: str | None = None) -> list[PostInfo]:
     if content is None:
         content = INDEX_PATH.read_text(encoding="utf-8")
     matches = re.finditer(
-        r'<article class="post-card(?:\s+cover-post)?" data-category="(?P<category>[^"]+)">(?P<body>.*?)</article>',
+        r'<article class="post-card[^"]*" data-category="(?P<category>[^"]+)"(?P<attrs>[^>]*)>(?P<body>.*?)</article>',
         content,
         flags=re.S,
     )
@@ -121,6 +174,10 @@ def parse_posts(content: str | None = None) -> list[PostInfo]:
             title=strip_tags(link.group("title")),
             href=href,
             summary=strip_tags(paragraphs[-1]) if paragraphs else "",
+            **{
+                name: html.unescape(value)
+                for name, value in re.findall(r'data-(cover|place|rating)="([^"]*)"', match.group("attrs"))
+            },
         ))
     # Newest first. The sort is stable, so same-day posts keep their order in index.html.
     posts.sort(key=lambda post: post.date_attr, reverse=True)
@@ -129,8 +186,9 @@ def parse_posts(content: str | None = None) -> list[PostInfo]:
 
 # ---------- shared page pieces ----------
 
-def page_head(title: str, description: str, prefix: str, path: str, og_type: str = "website") -> str:
+def page_head(title: str, description: str, prefix: str, path: str, og_type: str = "website", image: str = "") -> str:
     canonical = f"{SITE_URL}/{path}"
+    og_image = f'\n    <meta property="og:image" content="{esc(f"{SITE_URL}/{image}", True)}">' if image else ""
     return f"""  <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -143,7 +201,7 @@ def page_head(title: str, description: str, prefix: str, path: str, og_type: str
     <meta property="og:title" content="{esc(title, True)}">
     <meta property="og:description" content="{esc(description, True)}">
     <meta property="og:url" content="{esc(canonical, True)}">
-    <meta property="og:locale" content="zh_CN">
+    <meta property="og:locale" content="zh_CN">{og_image}
     <link rel="icon" href="{prefix}favicon.svg" type="image/svg+xml">
     <link rel="alternate" type="application/atom+xml" title="{SITE_NAME}" href="{prefix}feed.xml">
     <script>{THEME_INIT_SCRIPT}</script>
@@ -161,7 +219,7 @@ def site_header(prefix: str, current: str = "") -> str:
     for category in CATEGORIES:
         _, short_name, _, _ = CATEGORIES[category]
         current_attr = ' aria-current="page"' if category == current else ""
-        links.append(f'            <a href="{prefix}boards/{category}.html"{current_attr}>{short_name}</a>')
+        links.append(f'            <a href="{prefix}boards/{category}.html" data-category="{category}"{current_attr}>{short_name}</a>')
     nav_links = "\n".join(links)
     return f"""    <a class="skip-link" href="#main">跳到正文</a>
     <div class="progress-bar" aria-hidden="true"></div>
@@ -204,10 +262,11 @@ def page_shell(
     prefix: str = "../",
     current: str = "",
     og_type: str = "website",
+    image: str = "",
 ) -> str:
     return f"""<!doctype html>
 <html lang="zh-CN">
-{page_head(f"{title} | {SITE_NAME}", description, prefix, path, og_type)}
+{page_head(f"{title} | {SITE_NAME}", description, prefix, path, og_type, image)}
   <body>
 {site_header(prefix, current)}
 
@@ -221,10 +280,17 @@ def page_shell(
 # ---------- homepage ----------
 
 def post_card(post: PostInfo) -> str:
-    _, category_cn, _, _ = category_names(post.category)
+    cover = (
+        f'            <img class="post-cover" src="{esc(post.cover, True)}" alt="" loading="lazy" decoding="async">\n'
+        if post.cover
+        else ""
+    )
+    card_class = "post-card has-cover" if post.cover else "post-card"
     return (
-        f'          <article class="post-card" data-category="{esc(post.category, True)}">\n'
-        f'            <p class="post-meta">{category_cn} · {post.date_text}</p>\n'
+        f'          <article class="{card_class}"{card_attrs(post)}>\n'
+        f"{cover}"
+        f"{score_badge(post, '            ')}"
+        f'            <p class="post-meta">{card_meta(post)}</p>\n'
         f'            <h3><a href="{esc(post.href, True)}">{esc(post.title)}</a></h3>\n'
         f"            <p>{esc(post.summary)}</p>\n"
         "          </article>"
@@ -234,7 +300,7 @@ def post_card(post: PostInfo) -> str:
 def timeline_item(post: PostInfo) -> str:
     _, category_cn, _, _ = category_names(post.category)
     return (
-        '          <article class="timeline-item">\n'
+        f'          <article class="timeline-item" data-category="{esc(post.category, True)}">\n'
         f'            <time datetime="{post.date_attr}">{post.date_text}</time>\n'
         "            <div>\n"
         f'              <h3><a href="{esc(post.href, True)}">{esc(post.title)}</a></h3>\n'
@@ -244,13 +310,32 @@ def timeline_item(post: PostInfo) -> str:
     )
 
 
+BOARD_ICONS = {
+    # notebook
+    "essay": '<path d="M6 3h11a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6z"/><path d="M6 3v18M4 7h2M4 12h2M4 17h2M10 8h5M10 12h5"/>',
+    # mountains + sun
+    "travel": '<path d="M3 19l6-10 4 6 2-3 6 7z"/><circle cx="17" cy="6" r="2"/>',
+    # game controller
+    "game": '<path d="M7 8h10a4 4 0 0 1 4 4v2a3 3 0 0 1-5.4 1.8L14.5 15h-5l-1.1.8A3 3 0 0 1 3 14v-2a4 4 0 0 1 4-4z"/><path d="M8 11v3M6.5 12.5h3M15.5 11.5h.01M17.5 13.5h.01"/>',
+}
+
+
+def board_icon(category: str) -> str:
+    return (
+        '<svg class="board-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" '
+        f'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{BOARD_ICONS.get(category, "")}</svg>'
+    )
+
+
 def board_entry(category: str, posts: list[PostInfo]) -> str:
-    title, _, _, _ = CATEGORIES[category]
+    title, _, _, description = CATEGORIES[category]
     count = sum(1 for post in posts if post.category == category)
     count_text = f"{count} 篇" if count else "还没有文章"
     return (
-        f'          <a class="board-card" data-board="{category}" href="boards/{category}.html">\n'
+        f'          <a class="board-card" data-board="{category}" data-category="{category}" href="boards/{category}.html">\n'
+        f"            {board_icon(category)}\n"
         f"            <h3>{title}</h3>\n"
+        f'            <p class="board-desc">{description}</p>\n'
         f'            <p class="board-count">{count_text}</p>\n'
         "          </a>"
     )
@@ -285,29 +370,72 @@ def rebuild_index(posts: list[PostInfo]) -> None:
 # ---------- board pages ----------
 
 def board_card(post: PostInfo) -> str:
-    _, category_cn, _, _ = category_names(post.category)
+    """One entry on a board page. Each board has its own shape:
+    diary = date-led rows, travel = photo cards, game = review rows with a score."""
+    link = f'<a href="../{esc(post.href, True)}">{esc(post.title)}</a>'
+    cover = (
+        f'          <img class="post-cover" src="../{esc(post.cover, True)}" alt="" loading="lazy" decoding="async">\n'
+        if post.cover
+        else ""
+    )
+    attrs = card_attrs(post)
+    if post.category == "travel":
+        placeholder = "" if post.cover else '          <div class="post-cover is-empty" aria-hidden="true"></div>\n'
+        return (
+            f'        <article class="board-post-card trip-card"{attrs}>\n'
+            f"{cover}{placeholder}"
+            '          <div class="trip-card-text">\n'
+            f'            <p class="post-meta">{card_meta(post)}</p>\n'
+            f"            <h2>{link}</h2>\n"
+            f"            <p>{esc(post.summary)}</p>\n"
+            "          </div>\n"
+            "        </article>"
+        )
+    if post.category == "game":
+        score = (
+            f'          <div class="score-box"><strong>{post.rating}</strong><span>{rating_label(post.rating)}</span></div>\n'
+            if post.rating
+            else '          <div class="score-box is-empty"><strong>–</strong><span>未评分</span></div>\n'
+        )
+        return (
+            f'        <article class="board-post-card review-row"{attrs}>\n'
+            f"{score}"
+            '          <div class="review-row-text">\n'
+            f'            <p class="post-meta">{card_meta(post)}</p>\n'
+            f"            <h2>{link}</h2>\n"
+            f"            <p>{esc(post.summary)}</p>\n"
+            "          </div>\n"
+            f"{cover}"
+            "        </article>"
+        )
+    year, month, day = (post.date_text.split(".") + ["", "", ""])[:3]
     return (
-        '        <article class="board-post-card">\n'
-        f'          <p class="post-meta">{category_cn} · {post.date_text}</p>\n'
-        f'          <h2><a href="../{esc(post.href, True)}">{esc(post.title)}</a></h2>\n'
-        f"          <p>{esc(post.summary)}</p>\n"
+        f'        <article class="board-post-card diary-row"{attrs}>\n'
+        f'          <time class="diary-date" datetime="{post.date_attr}"><strong>{day}</strong><span>{year}.{month}</span><span>{weekday_cn(post.date_attr)}</span></time>\n'
+        '          <div class="diary-row-text">\n'
+        f"            <h2>{link}</h2>\n"
+        f"            <p>{esc(post.summary)}</p>\n"
+        "          </div>\n"
         "        </article>"
     )
 
 
 def render_board_page(category: str, posts: list[PostInfo]) -> str:
     title, _, category_en, description = CATEGORIES[category]
-    post_list = "\n".join(board_card(post) for post in posts if post.category == category)
+    board_posts = [post for post in posts if post.category == category]
+    post_list = "\n".join(board_card(post) for post in board_posts)
     if not post_list:
         post_list = '        <p class="empty-note">这个板块还在等第一篇文章。</p>'
-    body = f"""    <main id="main" class="board-main">
+    count = f"{len(board_posts)} 篇" if board_posts else "还没有文章"
+    body = f"""    <main id="main" class="board-main" data-category="{category}">
       <a class="back-link" href="../index.html">返回首页</a>
       <header class="board-page-header">
-        <p class="eyebrow">{category_en}</p>
+        {board_icon(category)}
+        <p class="eyebrow">{category_en} · {count}</p>
         <h1>{title}</h1>
         <p>{description}</p>
       </header>
-      <section class="board-post-list" aria-label="{title}文章列表">
+      <section class="board-post-list board-{category}" aria-label="{title}文章列表">
 {post_list}
       </section>
     </main>
@@ -324,23 +452,54 @@ def extract_article_body(content: str) -> str:
     return match.group("body").strip()
 
 
-def sidebar_panel(heading: str, selected: list[PostInfo]) -> str:
-    if not selected:
-        return ""
-    items = "\n".join(
-        f'              <li><a href="{esc(post.filename, True)}">{esc(post.title)}</a><small>{post.date_text}</small></li>'
-        for post in selected
+def related_card(post: PostInfo) -> str:
+    cover = (
+        f'<img class="post-cover" src="../{esc(post.cover, True)}" alt="" loading="lazy" decoding="async">'
+        if post.cover
+        else ""
     )
-    return f"""          <section class="sidebar-panel">
-            <h2>{heading}</h2>
-            <ul>
-{items}
-            </ul>
-          </section>"""
+    return (
+        f'          <a class="related-card" href="{esc(post.filename, True)}"{card_attrs(post)}>'
+        f"{cover}"
+        f'<span class="post-meta">{card_meta(post)}</span>'
+        f"<strong>{esc(post.title)}</strong>"
+        "</a>"
+    )
+
+
+def article_header(post: PostInfo) -> str:
+    _, category_cn, category_en, _ = category_names(post.category)
+    time_tag = f'<time datetime="{post.date_attr}">{post.date_text}</time>'
+    if post.category == "essay":
+        meta = " · ".join(part for part in (time_tag, weekday_cn(post.date_attr)) if part)
+    elif post.category == "travel":
+        meta = " · ".join(part for part in (esc(post.place), time_tag) if part)
+    else:
+        meta = f"{time_tag} · {category_cn}"
+    text = f"""<p class="eyebrow">{category_en}</p>
+        <h1>{esc(post.title)}</h1>
+        <p class="article-meta">{meta}</p>"""
+    cover = f"../{esc(post.cover, True)}" if post.cover else ""
+    if cover and post.category == "travel":
+        return f"""      <header class="article-header trip-hero">
+        <img class="trip-hero-image zoomable" src="{cover}" alt="{esc(post.title, True)}">
+        <div class="trip-hero-text">
+        {text}
+        </div>
+      </header>"""
+    cover_html = (
+        f"""
+      <figure class="article-cover"><img class="zoomable" src="{cover}" alt="{esc(post.title, True)}"></figure>"""
+        if cover
+        else ""
+    )
+    return f"""      <header class="article-header">
+        {text}
+      </header>{cover_html}"""
 
 
 def render_article_page(post: PostInfo, posts: list[PostInfo], body_html: str) -> str:
-    _, category_cn, category_en, _ = category_names(post.category)
+    _, category_cn, _, _ = category_names(post.category)
     index = next((idx for idx, item in enumerate(posts) if item.href == post.href), -1)
     older = posts[index + 1] if 0 <= index + 1 < len(posts) else None
     newer = posts[index - 1] if index > 0 else None
@@ -355,33 +514,6 @@ def render_article_page(post: PostInfo, posts: list[PostInfo], body_html: str) -
         if newer
         else '        <span class="post-nav-card is-empty"><span>下一篇</span><strong>已经是最新文章</strong></span>'
     )
-
-    others = [item for item in posts if item.href != post.href]
-    same_board = [item for item in others if item.category == post.category][:5]
-    shown = {item.href for item in same_board}
-    elsewhere = [item for item in others if item.href not in shown][:5]
-    panels = [
-        panel for panel in (
-            sidebar_panel("同板块文章", same_board),
-            sidebar_panel("其他板块", elsewhere),
-        ) if panel
-    ]
-
-    article = f"""<article class="article-body" data-slug="{esc(post.slug, True)}">
-{body_html}
-        </article>"""
-    if panels:
-        main_class = "article-main article-layout"
-        content = f"""      <div class="article-content-grid">
-        {article}
-        <aside class="article-sidebar" aria-label="更多文章">
-{chr(10).join(panels)}
-        </aside>
-      </div>"""
-    else:
-        main_class = "article-main"
-        content = f"      {article}"
-
     nav = ""
     if older or newer:
         nav = f"""
@@ -390,15 +522,26 @@ def render_article_page(post: PostInfo, posts: list[PostInfo], body_html: str) -
 {newer_link}
       </nav>"""
 
-    board_href = f"../boards/{post.category}.html"
-    body = f"""    <main id="main" class="{main_class}">
-      <a class="back-link" href="{board_href}">返回{category_cn}板块</a>
-      <header class="article-header">
-        <p class="eyebrow">{category_en}</p>
-        <h1>{esc(post.title)}</h1>
-        <p class="article-meta"><time datetime="{post.date_attr}">{post.date_text}</time> · {category_cn}</p>
-      </header>
-{content}{nav}
+    # "More to read": same board first, then the rest, three at most.
+    others = [item for item in posts if item.href != post.href]
+    related = ([item for item in others if item.category == post.category] +
+               [item for item in others if item.category != post.category])[:3]
+    related_html = ""
+    if related:
+        related_html = f"""
+      <section class="related-posts" aria-label="更多文章">
+        <h2>接着看</h2>
+        <div class="related-grid">
+{chr(10).join(related_card(item) for item in related)}
+        </div>
+      </section>"""
+
+    body = f"""    <main id="main" class="article-main article-{post.category}" data-category="{esc(post.category, True)}">
+      <a class="back-link" href="../boards/{post.category}.html">返回{category_cn}板块</a>
+{article_header(post)}
+      <article class="article-body" data-slug="{esc(post.slug, True)}">
+{body_html}
+      </article>{nav}{related_html}
     </main>
 """
     return page_shell(
@@ -408,6 +551,7 @@ def render_article_page(post: PostInfo, posts: list[PostInfo], body_html: str) -
         path=post.href,
         current=post.category,
         og_type="article",
+        image=post.cover,
     )
 
 

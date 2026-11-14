@@ -20,7 +20,7 @@ INDEX_PATH = ROOT / "index.html"
 UPLOADS_DIR = ROOT / "assets" / "uploads"
 
 CATEGORIES = {
-    "essay": ("随笔", "Essay"),
+    "essay": ("日记", "Diary"),
     "travel": ("旅行", "Travel"),
     "game": ("游戏", "Game"),
 }
@@ -41,6 +41,8 @@ class Post:
     album: bool
     album_class: str
     body_html: str
+    place: str = ""
+    rating: str = ""
 
 
 def fail(message: str) -> None:
@@ -353,7 +355,95 @@ def markdown_to_html(markdown: str, md_path: Path, slug: str, copy_images: bool 
     close_paragraph(output, paragraph, md_path, slug, copy_images)
     close_list(output, list_items, list_ordered, md_path, slug, copy_images)
     close_quote(output, quote_lines, md_path, slug, copy_images)
-    return "\n\n".join(output)
+    return "\n\n".join(group_photos(output))
+
+
+def group_photos(blocks: list[str]) -> list[str]:
+    """Wrap runs of two or more standalone photos in a photo wall."""
+    grouped: list[str] = []
+    run: list[str] = []
+
+    def flush() -> None:
+        if len(run) >= 2:
+            grouped.append(
+                f'        <div class="photo-grid" data-count="{len(run)}">\n' + "\n".join(run) + "\n        </div>"
+            )
+        else:
+            grouped.extend(run)
+        run.clear()
+
+    for block in blocks:
+        if block.startswith('        <figure class="article-photo">'):
+            run.append(block)
+        else:
+            flush()
+            grouped.append(block)
+    flush()
+    return grouped
+
+
+def split_points(value: str) -> list[str]:
+    return [item.strip() for item in re.split(r"[|｜;；\n]", value) if item.strip()]
+
+
+def review_card(meta: dict[str, str], rating: str) -> str:
+    """The info box at the top of a game post: score plus a few facts."""
+    facts = [
+        (label, meta.get(key, "").strip())
+        for key, label in (("game", "游戏"), ("platform", "平台"), ("hours", "游玩时长"), ("status", "进度"))
+    ]
+    facts = [(label, value) for label, value in facts if value]
+    if not rating and not facts:
+        return ""
+    lines = ['        <aside class="review-card" aria-label="游戏信息">']
+    if rating:
+        lines.append(
+            f'          <div class="review-score" style="--score: {float(rating) * 10:.0f}">'
+            f"<strong>{rating}</strong><span>/ 10</span><em>{rebuild_blog_pages.rating_label(rating)}</em></div>"
+        )
+    if facts:
+        lines.append('          <dl class="review-facts">')
+        lines.extend(
+            f"            <div><dt>{label}</dt><dd>{html.escape(value, quote=False)}</dd></div>" for label, value in facts
+        )
+        lines.append("          </dl>")
+    lines.append("        </aside>")
+    return "\n".join(lines)
+
+
+def review_verdict(meta: dict[str, str]) -> str:
+    """Pros, cons and a one-line verdict at the end of a game post."""
+    pros = split_points(meta.get("pros", ""))
+    cons = split_points(meta.get("cons", ""))
+    verdict = meta.get("verdict", "").strip()
+    if not pros and not cons and not verdict:
+        return ""
+    lines = ['        <section class="review-verdict" aria-label="总评">']
+    if pros or cons:
+        lines.append('          <div class="review-points">')
+        for css_class, heading, items in (("review-pros", "优点", pros), ("review-cons", "缺点", cons)):
+            if not items:
+                continue
+            lines.append(f'            <div class="{css_class}">')
+            lines.append(f"              <h3>{heading}</h3>")
+            lines.append("              <ul>")
+            lines.extend(f"                <li>{html.escape(item, quote=False)}</li>" for item in items)
+            lines.append("              </ul>")
+            lines.append("            </div>")
+        lines.append("          </div>")
+    if verdict:
+        lines.append(f'          <p class="review-summary"><strong>一句话总结</strong>{html.escape(verdict, quote=False)}</p>')
+    lines.append("        </section>")
+    return "\n".join(lines)
+
+
+def diary_tags(meta: dict[str, str]) -> str:
+    tags = [(label, meta.get(key, "").strip()) for key, label in (("weather", "天气"), ("mood", "心情"))]
+    tags = [(label, value) for label, value in tags if value]
+    if not tags:
+        return ""
+    spans = "".join(f"<span><b>{label}</b>{html.escape(value, quote=False)}</span>" for label, value in tags)
+    return f'        <div class="diary-tags">{spans}</div>'
 
 
 def build_post(path: Path, copy_images: bool = True) -> Post:
@@ -383,22 +473,20 @@ def build_post(path: Path, copy_images: bool = True) -> Post:
         fail("album_class must be empty, tall, or wide.")
 
     body_html = markdown_to_html(markdown, path, slug, copy_images)
+    # The cover is shown by the page header (a full-width hero on travel posts),
+    # so it is not repeated inside the body.
     if cover:
         cover_src = copy_image_if_local(cover, path, slug, copy_images)
-        caption_html = (
-            f"\n          <figcaption>{html.escape(cover_caption, quote=False)}</figcaption>"
-            if cover_caption
-            else ""
-        )
-        cover_html = (
-            '        <figure class="article-photo">\n'
-            f'          <img src="{html.escape(cover_src, quote=True)}" alt="{html.escape(cover_alt, quote=True)}">'
-            f"{caption_html}\n"
-            "        </figure>"
-        )
-        body_html, count = re.subn(r"(        <p>.*?</p>)", rf"\1\n\n{cover_html}", body_html, count=1, flags=re.S)
-        if count == 0:
-            body_html = f"{cover_html}\n\n{body_html}" if body_html else cover_html
+
+    rating = rebuild_blog_pages.clean_rating(meta.get("rating", "")) if category == "game" else ""
+    place = meta.get("place", "").strip() if category == "travel" else ""
+    if category == "game":
+        blocks = [review_card(meta, rating), body_html, review_verdict(meta)]
+    elif category == "essay":
+        blocks = [diary_tags(meta), body_html]
+    else:
+        blocks = [body_html]
+    body_html = "\n\n".join(block for block in blocks if block)
 
     return Post(
         title=title,
@@ -414,6 +502,8 @@ def build_post(path: Path, copy_images: bool = True) -> Post:
         album=album,
         album_class=album_class,
         body_html=body_html,
+        place=place,
+        rating=rating,
     )
 
 
@@ -425,6 +515,9 @@ def post_info(post: Post) -> rebuild_blog_pages.PostInfo:
         title=post.title,
         href=f"posts/{post.slug}.html",
         summary=post.summary,
+        cover=index_src(post.cover_src) if post.cover_src.startswith("../") else "",
+        place=post.place,
+        rating=post.rating,
     )
 
 
@@ -474,7 +567,7 @@ def update_index(post: Post) -> None:
 
     existing = None
     for match in re.finditer(
-        r'[ \t]*<article class="post-card(?:[^"]*)" data-category="[^"]*">.*?</article>',
+        r'[ \t]*<article class="post-card(?:[^"]*)" data-category="[^"]*"[^>]*>.*?</article>',
         content,
         flags=re.S,
     ):
@@ -533,7 +626,7 @@ def _placeholder_latest_panel() -> str:
 def refresh_latest_panel(content: str) -> str:
     """Point the homepage 'latest article' panel at the newest remaining post-card."""
     card = re.search(
-        r'<article class="post-card(?:[^"]*)" data-category="[^"]*">(?P<body>.*?)</article>',
+        r'<article class="post-card(?:[^"]*)" data-category="[^"]*"[^>]*>(?P<body>.*?)</article>',
         content,
         flags=re.S,
     )
@@ -581,7 +674,7 @@ def remove_from_index(slug: str) -> bool:
     href = f"posts/{slug}.html"
     content, _ = _strip_index_blocks(
         content,
-        r'<article class="post-card(?:[^"]*)" data-category="[^"]*">.*?</article>',
+        r'<article class="post-card(?:[^"]*)" data-category="[^"]*"[^>]*>.*?</article>',
         f'href="{href}"',
     )
     content, _ = _strip_index_blocks(

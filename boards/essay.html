@@ -3,14 +3,14 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>感悟与随笔 | 浅梦</title>
-    <meta name="description" content="写一些不一定完整、但当时很真实的想法。">
+    <title>日记 | 浅梦</title>
+    <meta name="description" content="写给自己的日常：当天的事、当时的心情。">
     <meta name="theme-color" content="#f7f1e4">
     <link rel="canonical" href="https://shallowcode.github.io/boards/essay.html">
     <meta property="og:site_name" content="浅梦">
     <meta property="og:type" content="website">
-    <meta property="og:title" content="感悟与随笔 | 浅梦">
-    <meta property="og:description" content="写一些不一定完整、但当时很真实的想法。">
+    <meta property="og:title" content="日记 | 浅梦">
+    <meta property="og:description" content="写给自己的日常：当天的事、当时的心情。">
     <meta property="og:url" content="https://shallowcode.github.io/boards/essay.html">
     <meta property="og:locale" content="zh_CN">
     <link rel="icon" href="../favicon.svg" type="image/svg+xml">
@@ -39,9 +39,9 @@
         </div>
         <div class="nav-actions">
           <div class="nav-links">
-            <a href="../boards/essay.html" aria-current="page">随笔</a>
-            <a href="../boards/travel.html">旅行</a>
-            <a href="../boards/game.html">游戏</a>
+            <a href="../boards/essay.html" data-category="essay" aria-current="page">日记</a>
+            <a href="../boards/travel.html" data-category="travel">旅行</a>
+            <a href="../boards/game.html" data-category="game">游戏</a>
           </div>
           <button class="theme-toggle" type="button" aria-label="切换深色模式">
             <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a7 7 0 1 0 10.5 10.5z"/></svg>
@@ -51,18 +51,21 @@
       </nav>
     </header>
 
-    <main id="main" class="board-main">
+    <main id="main" class="board-main" data-category="essay">
       <a class="back-link" href="../index.html">返回首页</a>
       <header class="board-page-header">
-        <p class="eyebrow">Essay</p>
-        <h1>感悟与随笔</h1>
-        <p>写一些不一定完整、但当时很真实的想法。</p>
+        <svg class="board-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h11a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6z"/><path d="M6 3v18M4 7h2M4 12h2M4 17h2M10 8h5M10 12h5"/></svg>
+        <p class="eyebrow">Diary · 1 篇</p>
+        <h1>日记</h1>
+        <p>写给自己的日常：当天的事、当时的心情。</p>
       </header>
-      <section class="board-post-list" aria-label="感悟与随笔文章列表">
-        <article class="board-post-card">
-          <p class="post-meta">随笔 · 2026.05.09</p>
-          <h2><a href="../posts/example-note.html">找实习好难</a></h2>
-          <p>总是在感觉过度准备，背了又忘，也不知道是在理解知识还是背诵知识。</p>
+      <section class="board-post-list board-essay" aria-label="日记文章列表">
+        <article class="board-post-card diary-row" data-category="essay">
+          <time class="diary-date" datetime="2026-05-09"><strong>09</strong><span>2026.05</span><span>星期六</span></time>
+          <div class="diary-row-text">
+            <h2><a href="../posts/example-note.html">找实习好难</a></h2>
+            <p>总是在感觉过度准备，背了又忘，也不知道是在理解知识还是背诵知识。</p>
+          </div>
         </article>
       </section>
     </main>

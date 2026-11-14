@@ -685,7 +685,7 @@ ADMIN_HTML = """<!doctype html>
           <div class="field">
             <label for="newCategory">板块</label>
             <select id="newCategory">
-              <option value="essay">随笔</option>
+              <option value="essay">日记</option>
               <option value="travel">旅行</option>
               <option value="game">游戏</option>
             </select>

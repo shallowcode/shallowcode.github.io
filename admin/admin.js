@@ -21,7 +21,37 @@
   const RAW_URL = `https://raw.githubusercontent.com/${CONFIG.owner}/${CONFIG.repo}/${CONFIG.branch}`;
   const TOKEN_KEY = "qm_admin_token";
   const DRAFT_PREFIX = "qm_admin_draft:";
-  const CATEGORIES = { essay: "随笔", travel: "旅行", game: "游戏" };
+  const CATEGORIES = { essay: "日记", travel: "旅行", game: "游戏" };
+  // 每个板块自己的字段：[front matter 里的名字, 显示的名字, 输入提示, 是否占一整行]
+  const EXTRA_FIELDS = {
+    essay: [
+      ["weather", "天气", "晴 / 小雨 / 大风…"],
+      ["mood", "心情", "平静 / 开心 / 有点累…"],
+    ],
+    travel: [["place", "地点", "云南 · 大理", true]],
+    game: [
+      ["game", "游戏名", "空洞骑士 Hollow Knight"],
+      ["platform", "平台", "PC / Switch / PS5"],
+      ["hours", "游玩时长", "30 小时"],
+      ["status", "进度", "已通关 / 游玩中 / 弃坑"],
+      ["rating", "评分（0–10，可以带一位小数）", "8.5"],
+      ["verdict", "一句话总结", "值不值得玩，一句话说清楚"],
+      ["pros", "优点（多条用 | 隔开）", "手感好 | 音乐出色", true],
+      ["cons", "缺点（多条用 | 隔开）", "前期慢热 | 重复度高", true],
+    ],
+  };
+  const EXTRA_KEYS = ["cover", ...new Set(Object.values(EXTRA_FIELDS).flat().map(([key]) => key))];
+  const CATEGORY_HINTS = {
+    essay: "日记：页面是窄栏的衬线排版，会显示星期、天气和心情。",
+    travel: "旅行：封面图会变成页面顶部的大图；正文里连续放几张照片会自动排成照片墙，点击可以放大。",
+    game: "游戏：评分、平台等会显示成页面右侧的信息卡，优点、缺点和一句话总结显示在文章末尾。",
+  };
+  const BODY_TEMPLATES = {
+    essay: "今天……\n\n## 发生了什么\n\n\n\n## 想记住的\n\n> ",
+    travel:
+      "先用一两句话说说这趟旅行。\n\n## 行程\n\n- 第一天：\n- 第二天：\n\n## 路上\n\n（在这里连续插入几张照片，会自动排成照片墙）\n\n## 吃了什么\n\n\n\n## 小贴士\n\n- 交通：\n- 住宿：\n- 花费：",
+    game: "先用一两句话说说为什么想写它。\n\n## 玩法\n\n\n\n## 剧情与氛围\n\n\n\n## 画面与音乐\n\n\n\n## 让我记住的瞬间\n\n\n\n## 适合谁玩\n\n",
+  };
   const TEXT_EXTENSIONS = /\.(md|markdown|txt|html?|css|js|mjs|json|xml|svg|ya?ml|py|bat|sh|toml|ini|csv|gitignore|nojekyll|gitkeep)$/i;
   const IMAGE_EXTENSIONS = /\.(png|jpe?g|gif|webp|avif|svg|ico)$/i;
   const GENERATED_FILES = /^(posts\/[^/]+\.html|boards\/[^/]+\.html|feed\.xml|sitemap\.xml)$/;
@@ -431,7 +461,9 @@
     for (const [key, value] of Object.entries(fields)) merged.set(key, value);
     const order = ["title", "slug", "date", "category", "summary"];
     const keys = [...order, ...[...merged.keys()].filter((key) => !order.includes(key))];
-    const lines = keys.filter((key) => merged.has(key)).map((key) => `${key}: ${oneLine(merged.get(key))}`.trimEnd());
+    const lines = keys
+      .filter((key) => merged.has(key) && (order.includes(key) || oneLine(merged.get(key)) !== ""))
+      .map((key) => `${key}: ${oneLine(merged.get(key))}`.trimEnd());
     return `---\n${lines.join("\n")}\n---\n\n${body.trim()}\n`;
   }
 
@@ -576,7 +608,23 @@
     }
     if (inCode) closeCode();
     closeAll();
-    return output.join("\n");
+    // 连续的照片排成照片墙，和发布后的页面一致
+    const grouped = [];
+    let run = [];
+    const flush = () => {
+      if (run.length >= 2) grouped.push(`<div class="photo-grid" data-count="${run.length}">${run.join("")}</div>`);
+      else grouped.push(...run);
+      run = [];
+    };
+    for (const block of output) {
+      if (block.startsWith('<figure class="article-photo">')) run.push(block);
+      else {
+        flush();
+        grouped.push(block);
+      }
+    }
+    flush();
+    return grouped.join("\n");
   }
 
   /* ---------- images ---------- */
@@ -1014,10 +1062,13 @@
       category: CATEGORIES[parsed.meta.category] ? parsed.meta.category : "essay",
       summary: parsed.meta.summary || "",
       body: parsed.body,
+      extra: JSON.stringify(Object.fromEntries(EXTRA_KEYS.map((key) => [key, parsed.meta[key] || ""]))),
     };
     const draft = readDraft(draftKey);
-    const draftDiffers = draft && ["title", "date", "category", "summary", "body"].some((key) => draft[key] !== saved[key]);
+    const draftDiffers =
+      draft && ["title", "date", "category", "summary", "body", "extra"].some((key) => (draft[key] ?? saved[key]) !== saved[key]);
     const initial = draftDiffers ? { ...saved, ...draft } : saved;
+    const extra = JSON.parse(initial.extra || saved.extra);
     const slug = initial.slug;
     const path = isNew ? `${CONFIG.inbox}/${slug}.md` : entry.path;
     const pendingImages = new Map(); // path -> { bytes, url }
@@ -1067,6 +1118,7 @@
       category: category.value,
       summary: oneLine(summary.value),
       body: body.value,
+      extra: JSON.stringify(extra),
     });
 
     const onChange = () => {
@@ -1075,6 +1127,60 @@
       updatePreview();
     };
     for (const control of [title, date, category, summary, body]) control.addEventListener("input", onChange);
+
+    // 板块专属的字段和封面图；切换板块时重新画一遍，填过的内容会保留。
+    const extraBox = h("div", { class: "extra-fields" });
+    const coverInput = h("input", { type: "file", accept: "image/*", class: "sr-only", tabindex: "-1" });
+    const renderExtra = () => {
+      const kind = category.value;
+      const inputs = EXTRA_FIELDS[kind].map(([key, label, placeholder, wide]) => {
+        const input = h("input", { type: "text", id: `extra-${key}`, value: extra[key] || "", placeholder, maxlength: 200 });
+        input.addEventListener("input", () => {
+          extra[key] = input.value;
+          onChange();
+        });
+        return h("label", { class: wide ? "field field-wide" : "field", for: `extra-${key}` }, h("span", {}, label), input);
+      });
+      const cover = extra.cover
+        ? h(
+            "div",
+            { class: "cover-picker" },
+            h("img", { src: resolveSrc(extra.cover), alt: "封面图预览" }),
+            h("button", { class: "btn btn-small", type: "button", onclick: () => coverInput.click() }, "更换"),
+            h(
+              "button",
+              {
+                class: "btn btn-small btn-danger",
+                type: "button",
+                onclick: () => {
+                  extra.cover = "";
+                  renderExtra();
+                  onChange();
+                },
+              },
+              "移除",
+            ),
+          )
+        : h("div", { class: "cover-picker" }, h("button", { class: "btn btn-small", type: "button", onclick: () => coverInput.click() }, "选择封面图"));
+      extraBox.replaceChildren(
+        h("p", { class: "muted field-wide" }, CATEGORY_HINTS[kind]),
+        ...inputs,
+        h("div", { class: "field field-wide" }, h("span", {}, kind === "travel" ? "封面图（页面顶部的大图）" : "封面图（可选）"), cover),
+      );
+    };
+    category.addEventListener("change", renderExtra);
+    coverInput.addEventListener("change", async () => {
+      const file = coverInput.files[0];
+      coverInput.value = "";
+      if (!file) return;
+      const image = await prepareImage(file);
+      const repoPath = `${CONFIG.uploads}/${slug}/cover-${Date.now().toString(36)}.${image.extension}`;
+      const type = image.extension === "jpg" ? "image/jpeg" : file.type;
+      pendingImages.set(repoPath, { bytes: image.bytes, url: URL.createObjectURL(new Blob([image.bytes], { type })) });
+      extra.cover = repoPath;
+      renderExtra();
+      onChange();
+    });
 
     const insertAtCursor = (text) => {
       const start = body.selectionStart ?? body.value.length;
@@ -1122,16 +1228,28 @@
         body.focus();
         return;
       }
+      const kind = values.category;
+      const rating = oneLine(extra.rating);
+      if (kind === "game" && rating && !(Number(rating) >= 0 && Number(rating) <= 10)) {
+        notify("评分要填 0 到 10 之间的数字，比如 8.5。", "error");
+        return;
+      }
+      // 只保存当前板块用得上的字段，其他板块的清空
+      const relevant = new Set(["cover", ...EXTRA_FIELDS[kind].map(([key]) => key)]);
+      const extraValues = Object.fromEntries(EXTRA_KEYS.map((key) => [key, relevant.has(key) ? oneLine(extra[key]) : ""]));
       const missing = missingImages();
+      if (extraValues.cover && /^assets\//.test(extraValues.cover) && !pendingImages.has(extraValues.cover) && !findEntry(extraValues.cover)) {
+        missing.push(extraValues.cover);
+      }
       if (missing.length && !window.confirm(`正文里有 ${missing.length} 张图片还没有上传（可能是恢复草稿时丢失的），发布后会显示不出来。\n仍然继续吗？`)) {
         return;
       }
       const markdown = composeMarkdown(
         parsed.entries,
-        { title: values.title, slug, date: values.date, category: values.category, summary: values.summary },
+        { title: values.title, slug, date: values.date, category: values.category, summary: values.summary, ...extraValues },
         values.body,
       );
-      const used = [...pendingImages].filter(([repoPath]) => body.value.includes(repoPath));
+      const used = [...pendingImages].filter(([repoPath]) => body.value.includes(repoPath) || extraValues.cover === repoPath);
       const changes = [{ path, text: markdown }, ...used.map(([repoPath, image]) => ({ path: repoPath, bytes: image.bytes }))];
       const message = `${isNew ? "Publish" : "Update"} post: ${values.title}`;
       if (await runCommit(message, changes, isNew ? "已发布。" : "已保存。")) {
@@ -1196,11 +1314,29 @@
           h("label", { class: "field", for: "post-category" }, h("span", {}, "板块"), category),
         ),
         h("label", { class: "field", for: "post-summary" }, h("span", {}, "摘要（显示在首页卡片上）"), summary),
+        extraBox,
+        coverInput,
         h(
           "div",
           { class: "editor-toolbar" },
           h("div", { class: "pane-tabs" }, paneButtons),
-          h("button", { class: "btn btn-small", type: "button", onclick: () => fileInput.click() }, "插入图片"),
+          h(
+            "div",
+            { class: "admin-actions" },
+            h(
+              "button",
+              {
+                class: "btn btn-small",
+                type: "button",
+                onclick: () => {
+                  if (body.value.trim() && !window.confirm("正文里已经有内容了，要把模板加在光标位置吗？")) return;
+                  insertAtCursor(BODY_TEMPLATES[category.value]);
+                },
+              },
+              "插入正文模板",
+            ),
+            h("button", { class: "btn btn-small", type: "button", onclick: () => fileInput.click() }, "插入图片"),
+          ),
           fileInput,
         ),
         grid,
@@ -1214,6 +1350,7 @@
       ),
     );
     state.dirty = Boolean(draftDiffers);
+    renderExtra();
     updatePreview();
     (isNew && !initial.title ? title : body).focus({ preventScroll: true });
   }

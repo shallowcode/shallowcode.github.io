@@ -6,7 +6,7 @@
 
 - 一段原始文字：想法、流水账、旅行路线、游戏感受都可以。
 - 照片或截图：放到 `assets/uploads/<文章英文名>/`，或者先写清楚图片文件名和说明。
-- 发布倾向：想放到 `随笔`、`旅行`、`游戏`，或者让 Codex 帮你判断。
+- 发布倾向：想放到 `日记`、`旅行`、`游戏`，或者让 Codex 帮你判断。
 
 ## 在网页上写（最省事）
 
@@ -39,13 +39,29 @@ summary: 这是一篇首页摘要，会显示在文章卡片和时间线里。
 
 支持的 `category`：
 
-- `essay`：随笔
+- `essay`：日记
 - `travel`：旅行
 - `game`：游戏
 
+每个板块有自己的版式和专属字段（在网页管理页里选了板块就会出现对应的输入框，不用手写）：
+
+| 板块 | 版式 | 专属字段 |
+| --- | --- | --- |
+| `essay` 日记 | 窄栏衬线正文，显示星期 | `weather` 天气、`mood` 心情 |
+| `travel` 旅行 | 封面图变成顶部大图；连续的照片自动排成照片墙，点击放大 | `place` 地点、`cover` 封面图 |
+| `game` 游戏 | 右侧评分信息卡，文末优缺点和总评 | `game` 游戏名、`platform` 平台、`hours` 游玩时长、`status` 进度、`rating` 评分（0–10）、`pros` 优点、`cons` 缺点（多条用 `|` 隔开）、`verdict` 一句话总结 |
+
+照片墙的写法：把几张图片连着写（中间可以空行，但不要夹文字）：
+
+```markdown
+![湖边的早晨](assets/uploads/my-trip/1.jpg)
+![骑行路上](assets/uploads/my-trip/2.jpg)
+![傍晚](assets/uploads/my-trip/3.jpg)
+```
+
 常用可选字段：
 
-- `cover`：封面图路径，例如 `cover.jpg` 或 `assets/uploads/2026-05-09-my-post/cover.jpg`
+- `cover`：封面图路径，例如 `cover.jpg` 或 `assets/uploads/2026-05-09-my-post/cover.jpg`。显示在文章标题处（旅行是顶部大图），也用作首页卡片和分享时的配图
 - `cover_alt`：封面图替代文本
 - `cover_caption`：封面图说明
 - `timeline`：首页时间线文案，不写就使用 `summary`

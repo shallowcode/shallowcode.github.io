@@ -68,6 +68,77 @@
     }
   }
 
+  // 点击照片放大，左右切换
+  const photos = [...document.querySelectorAll(".zoomable, .article-body .article-photo img")];
+  if (photos.length) {
+    let box = null;
+    let current = 0;
+    let lastFocus = null;
+
+    const close = () => {
+      if (!box) return;
+      box.remove();
+      box = null;
+      document.body.style.overflow = "";
+      if (lastFocus) lastFocus.focus({ preventScroll: true });
+    };
+
+    const show = (index) => {
+      current = (index + photos.length) % photos.length;
+      const photo = photos[current];
+      const figure = photo.closest("figure");
+      const caption = figure && figure.querySelector("figcaption");
+      box.querySelector("img").src = photo.currentSrc || photo.src;
+      box.querySelector("img").alt = photo.alt;
+      box.querySelector(".lightbox-caption").textContent =
+        (caption ? caption.textContent : "") + (photos.length > 1 ? `　${current + 1} / ${photos.length}` : "");
+    };
+
+    const open = (index) => {
+      lastFocus = document.activeElement;
+      box = document.createElement("div");
+      box.className = "lightbox";
+      box.setAttribute("role", "dialog");
+      box.setAttribute("aria-modal", "true");
+      box.setAttribute("aria-label", "查看照片");
+      if (photos.length === 1) box.dataset.single = "";
+      box.innerHTML =
+        '<img alt=""><p class="lightbox-caption"></p>' +
+        '<button class="lightbox-close" type="button" aria-label="关闭">×</button>' +
+        '<button class="lightbox-prev" type="button" aria-label="上一张">‹</button>' +
+        '<button class="lightbox-next" type="button" aria-label="下一张">›</button>';
+      box.addEventListener("click", (event) => {
+        if (event.target.closest(".lightbox-prev")) show(current - 1);
+        else if (event.target.closest(".lightbox-next")) show(current + 1);
+        else close();
+      });
+      document.body.append(box);
+      document.body.style.overflow = "hidden";
+      show(index);
+      box.querySelector(".lightbox-close").focus();
+    };
+
+    photos.forEach((photo, index) => {
+      photo.tabIndex = 0;
+      photo.setAttribute("role", "button");
+      photo.setAttribute("aria-label", `${photo.alt || "照片"}，点击放大`);
+      photo.addEventListener("click", () => open(index));
+      photo.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          open(index);
+        }
+      });
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (!box) return;
+      if (event.key === "Escape") close();
+      else if (event.key === "ArrowLeft") show(current - 1);
+      else if (event.key === "ArrowRight") show(current + 1);
+    });
+  }
+
   // 顶部阅读进度条
   const progressBar = document.querySelector(".progress-bar");
   if (progressBar) {

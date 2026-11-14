@@ -68,8 +68,8 @@ posts/game-afterthought.html
 
 目前有三个板块：
 
-- `essay`：感悟与随笔
-- `travel`：旅行与照片
-- `game`：游戏与记录
+- `essay`：日记
+- `travel`：旅行
+- `game`：游戏
 
 文章卡片里的 `data-category` 要使用这三个值之一，这样文章才会出现在对应的板块页里。

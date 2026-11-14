@@ -941,3 +941,502 @@ p { margin: 0; }
   .article-main, .board-main { width: 100%; padding: 0; }
   .article-content-grid { display: block; }
 }
+
+/* =====================================================================
+   板块主题：日记 / 旅行 / 游戏
+   每个板块有自己的强调色。带 data-category 的元素（卡片、导航、<main>）
+   内部的 --terra / --accent-text 会换成对应板块的颜色。
+   ===================================================================== */
+
+[data-category="travel"] {
+  --terra: #2f8f83;
+  --terra-deep: #1f6f66;
+  --accent-text: #1c665d;
+  --gold: #8fb35a;
+}
+[data-category="game"] {
+  --terra: #6d5bd0;
+  --terra-deep: #5443b8;
+  --accent-text: #4f3fae;
+  --gold: #c0619a;
+}
+:root[data-theme="dark"] [data-category="travel"] {
+  --terra: #3fa798;
+  --terra-deep: #7fd1c4;
+  --accent-text: #86d6c9;
+  --gold: #a9c97a;
+}
+:root[data-theme="dark"] [data-category="game"] {
+  --terra: #8170e0;
+  --terra-deep: #b3a6ff;
+  --accent-text: #b9adff;
+  --gold: #e08fbd;
+}
+
+body {
+  background:
+    radial-gradient(1100px 520px at 82% -8%, var(--glow) 0%, transparent 60%),
+    radial-gradient(900px 480px at -10% 105%, color-mix(in srgb, var(--sage) 9%, transparent) 0%, transparent 60%),
+    var(--bg);
+}
+
+.section-heading .eyebrow::before {
+  content: "";
+  display: inline-block;
+  width: 22px; height: 2px;
+  margin-right: 10px;
+  vertical-align: middle;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--terra), var(--gold));
+}
+
+/* ---------- cards with covers and scores ---------- */
+
+.post-card { overflow: hidden; }
+
+.post-card.has-cover { padding-top: 0; }
+.post-card .post-cover {
+  width: calc(100% + 52px);
+  max-width: none;
+  margin: 0 -26px 20px;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  background: var(--paper-soft);
+  transition: transform 500ms ease;
+}
+.post-card:hover .post-cover { transform: scale(1.03); }
+
+.post-card:not(.has-cover)::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: linear-gradient(var(--terra), var(--gold));
+  opacity: 0.75;
+}
+
+.score-badge {
+  position: absolute;
+  top: 16px; right: 16px;
+  z-index: 1;
+  min-width: 44px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--terra-deep);
+  color: var(--on-accent);
+  font-family: var(--serif);
+  font-size: 1rem;
+  font-weight: 700;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+}
+
+/* ---------- board entries on the homepage ---------- */
+
+.board-card {
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 8px;
+  min-height: 0;
+  padding: 26px 56px 24px 26px;
+}
+.board-card::before { opacity: 1; height: 4px; }
+.board-card::after { top: 38px; }
+
+.board-icon {
+  width: 44px; height: 44px;
+  padding: 9px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--terra) 13%, transparent);
+  color: var(--accent-text);
+}
+
+.board-card h3 { margin-top: 6px; }
+.board-card .board-desc { color: var(--muted); font-size: 0.94rem; line-height: 1.6; }
+.board-card .board-count {
+  margin-top: 4px;
+  color: var(--accent-text);
+  font-size: 0.82rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+/* ---------- board pages ---------- */
+
+.board-page-header .board-icon { width: 52px; height: 52px; margin-bottom: 18px; padding: 11px; border-radius: 16px; }
+
+.board-post-list { max-width: none; }
+.board-post-card { overflow: hidden; }
+
+/* 日记：日期在左，一行一篇 */
+.board-essay { max-width: 780px; gap: 12px; }
+.diary-row {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 22px;
+  align-items: center;
+  padding: 20px 24px;
+}
+.diary-date {
+  display: grid;
+  justify-items: center;
+  gap: 1px;
+  padding-right: 22px;
+  border-right: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+}
+.diary-date strong {
+  color: var(--accent-text);
+  font-family: var(--serif);
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.diary-row h2 { margin: 0; font-size: 1.25rem; }
+.diary-row p:last-child { margin-top: 6px; }
+
+/* 旅行：照片卡片 */
+.board-travel { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 22px; }
+.trip-card { padding: 0; }
+.trip-card .post-cover {
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  object-fit: cover;
+  background: var(--paper-soft);
+  transition: transform 500ms ease;
+}
+.trip-card:hover .post-cover { transform: scale(1.03); }
+.trip-card .post-cover.is-empty {
+  background:
+    radial-gradient(circle at 78% 26%, color-mix(in srgb, var(--gold) 55%, transparent) 0 9%, transparent 10%),
+    linear-gradient(160deg, color-mix(in srgb, var(--terra) 26%, var(--paper)) 0%, color-mix(in srgb, var(--terra) 8%, var(--paper)) 100%);
+}
+.trip-card-text { position: relative; padding: 20px 24px 24px; background: var(--paper); }
+.trip-card h2 { margin-top: 8px; }
+
+/* 游戏：评分在左的评测列表 */
+.board-game { max-width: 900px; gap: 14px; }
+.review-row {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr) auto;
+  gap: 22px;
+  align-items: center;
+  padding: 18px 22px;
+}
+.score-box {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 2px;
+  width: 84px; height: 84px;
+  border-radius: 20px;
+  background: linear-gradient(150deg, var(--terra), var(--terra-deep));
+  color: #fff;
+}
+:root[data-theme="dark"] .score-box { color: #17131f; }
+.score-box strong { font-family: var(--serif); font-size: 1.9rem; font-weight: 700; line-height: 1; }
+.score-box span { font-size: 0.74rem; letter-spacing: 0.08em; opacity: 0.9; }
+.score-box.is-empty { background: var(--paper-soft); color: var(--faint); }
+.review-row h2 { margin-top: 4px; font-size: 1.3rem; }
+.review-row p:last-child { margin-top: 6px; }
+.review-row .post-cover {
+  width: 168px;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  background: var(--paper-soft);
+}
+
+/* ---------- article pages ---------- */
+
+.article-essay { width: min(700px, calc(100% - 40px)); }
+.article-travel { width: min(980px, calc(100% - 40px)); }
+.article-game { width: min(880px, calc(100% - 40px)); }
+
+.article-cover {
+  margin: 0 0 36px;
+  overflow: hidden;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-soft);
+}
+.article-cover img { width: 100%; max-height: 380px; object-fit: cover; }
+
+.zoomable,
+.article-body .article-photo img { cursor: zoom-in; }
+
+/* 日记：衬线正文，像写在本子上 */
+.article-essay .article-header { margin-bottom: 30px; padding-bottom: 26px; border-bottom: 1px dashed var(--line); }
+.article-essay .article-header h1 { font-size: clamp(1.9rem, 4vw, 2.6rem); }
+.article-essay .article-body { font-family: var(--serif); font-size: 1.1rem; line-height: 2.05; }
+
+.diary-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 1.6em; font-family: var(--sans); }
+.diary-tags span {
+  padding: 3px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink-soft);
+  font-size: 0.86rem;
+}
+.diary-tags b { margin-right: 6px; color: var(--accent-text); font-weight: 500; }
+
+/* 旅行：封面大图 + 照片墙 */
+.trip-hero {
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 44px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.trip-hero-image { width: 100%; aspect-ratio: 21 / 9; min-height: 320px; max-height: 560px; object-fit: cover; }
+.trip-hero-text {
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: 90px 36px 30px;
+  background: linear-gradient(180deg, transparent, rgba(18, 14, 10, 0.78));
+  pointer-events: none;
+}
+.trip-hero-text .eyebrow { color: rgba(255, 255, 255, 0.82); }
+.trip-hero-text h1 { color: #fff; text-shadow: 0 2px 18px rgba(0, 0, 0, 0.35); }
+.trip-hero-text .article-meta { color: rgba(255, 255, 255, 0.88); }
+
+.article-travel .article-body { max-width: none; }
+.article-travel .article-body > :not(.photo-grid):not(.article-photo) {
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.article-travel .article-body > .article-photo { max-width: 860px; margin-left: auto; margin-right: auto; }
+
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 2.2em 0;
+}
+.photo-grid[data-count="2"],
+.photo-grid[data-count="4"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.photo-grid .article-photo {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  box-shadow: none;
+}
+.photo-grid .article-photo img {
+  width: 100%;
+  max-height: none;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  transition: transform 400ms ease, filter 400ms ease;
+}
+.photo-grid .article-photo:hover img { transform: scale(1.04); filter: brightness(1.05); }
+.photo-grid .article-photo figcaption { padding: 8px 10px; font-size: 0.82rem; }
+/* 5 张、7 张…… 时让第一张占两格，凑齐网格 */
+.photo-grid[data-count="5"] .article-photo:first-child,
+.photo-grid[data-count="8"] .article-photo:first-child { grid-column: span 2; }
+.photo-grid[data-count="5"] .article-photo:first-child img,
+.photo-grid[data-count="8"] .article-photo:first-child img { flex: 1 1 0; height: 0; min-height: 0; aspect-ratio: auto; }
+
+/* 游戏：评分卡 + 优缺点 + 总评 */
+.article-game .article-body { max-width: none; }
+
+.review-card {
+  float: right;
+  width: 270px;
+  margin: 6px 0 24px 36px;
+  padding: 24px 22px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper);
+  box-shadow: var(--shadow-soft);
+  font-family: var(--sans);
+}
+.review-score {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  width: 132px; height: 132px;
+  margin: 0 auto;
+  border-radius: 50%;
+  background:
+    radial-gradient(closest-side, var(--paper) 84%, transparent 85%),
+    conic-gradient(var(--terra) calc(var(--score, 0) * 1%), var(--line) 0);
+}
+.review-score strong { font-family: var(--serif); font-size: 2.5rem; font-weight: 700; line-height: 1; color: var(--accent-text); }
+.review-score span { color: var(--faint); font-size: 0.8rem; }
+.review-score em {
+  margin-top: 4px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--terra) 14%, transparent);
+  color: var(--accent-text);
+  font-size: 0.8rem;
+  font-style: normal;
+  font-weight: 500;
+}
+.review-facts { display: grid; gap: 0; margin: 0; }
+.review-score + .review-facts { margin-top: 20px; }
+.review-facts div {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 9px 0;
+  border-top: 1px solid var(--line-soft);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+.review-facts dt { flex: none; color: var(--muted); }
+.review-facts dd { margin: 0; color: var(--ink); font-weight: 500; text-align: right; }
+
+.review-verdict { clear: both; margin-top: 3em; font-family: var(--sans); }
+.review-points { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.review-pros,
+.review-cons {
+  padding: 20px 22px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+}
+.review-verdict h3 { margin: 0 0 10px; font-size: 1.05rem; }
+.review-pros h3 { color: #3f8a5a; }
+.review-cons h3 { color: #b3402f; }
+:root[data-theme="dark"] .review-pros h3 { color: #8fd0a6; }
+:root[data-theme="dark"] .review-cons h3 { color: #f0907f; }
+.article-body .review-verdict ul { margin: 0; padding: 0; list-style: none; }
+.article-body .review-verdict li { position: relative; margin: 0; padding: 5px 0 5px 24px; font-size: 0.98rem; line-height: 1.7; }
+.review-verdict li::before { position: absolute; left: 2px; font-weight: 700; }
+.review-pros li::before { content: "+"; color: #3f8a5a; }
+.review-cons li::before { content: "−"; color: #b3402f; }
+:root[data-theme="dark"] .review-pros li::before { color: #8fd0a6; }
+:root[data-theme="dark"] .review-cons li::before { color: #f0907f; }
+.review-summary {
+  margin-top: 16px;
+  padding: 18px 22px;
+  border-left: 4px solid var(--terra);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: color-mix(in srgb, var(--terra) 9%, var(--paper));
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 1.08rem;
+  line-height: 1.8;
+}
+.review-summary strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--accent-text);
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+}
+
+/* ---------- more to read ---------- */
+
+.related-posts { margin-top: 56px; }
+.post-nav + .related-posts { margin-top: 44px; }
+.related-posts > h2 { margin-bottom: 18px; font-size: 1.2rem; }
+.related-grid { align-items: start; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+.related-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: hidden;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+.related-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--terra) 40%, var(--line));
+  box-shadow: var(--shadow-soft);
+}
+.related-card .post-cover {
+  width: calc(100% + 40px);
+  max-width: none;
+  margin: -18px -20px 8px;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+.related-card strong { font-family: var(--serif); font-weight: 600; line-height: 1.4; }
+
+/* ---------- photo lightbox ---------- */
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  place-items: center;
+  gap: 12px;
+  padding: 24px 16px 20px;
+  background: rgba(16, 12, 9, 0.93);
+  animation: lightbox-in 160ms ease;
+}
+@keyframes lightbox-in { from { opacity: 0; } }
+.lightbox img { max-width: 100%; max-height: 100%; min-height: 0; object-fit: contain; border-radius: 6px; cursor: zoom-out; }
+.lightbox-caption { min-height: 1.6em; color: rgba(255, 255, 255, 0.85); font-size: 0.92rem; text-align: center; }
+.lightbox button {
+  position: absolute;
+  display: grid;
+  width: 46px; height: 46px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 160ms ease;
+}
+.lightbox button:hover { background: rgba(255, 255, 255, 0.28); }
+.lightbox-close { top: 16px; right: 16px; }
+.lightbox-prev { top: 50%; left: 14px; transform: translateY(-50%); }
+.lightbox-next { top: 50%; right: 14px; transform: translateY(-50%); }
+.lightbox[data-single] .lightbox-prev,
+.lightbox[data-single] .lightbox-next { display: none; }
+
+/* ---------- responsive ---------- */
+
+@media (max-width: 760px) {
+  .review-card { float: none; width: auto; margin: 0 0 28px; }
+  .review-row { grid-template-columns: 64px minmax(0, 1fr); gap: 16px; }
+  .review-row .post-cover { display: none; }
+  .score-box { width: 64px; height: 64px; border-radius: 16px; }
+  .score-box strong { font-size: 1.5rem; }
+  .trip-hero-image { aspect-ratio: 4 / 3; min-height: 0; }
+  .trip-hero-text { padding: 70px 20px 20px; }
+  .photo-grid,
+  .photo-grid[data-count] { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .photo-grid[data-count="3"] .article-photo:first-child,
+  .photo-grid[data-count="5"] .article-photo:first-child,
+  .photo-grid[data-count="7"] .article-photo:first-child { grid-column: span 2; }
+  .photo-grid[data-count="8"] .article-photo:first-child { grid-column: auto; }
+  .photo-grid[data-count="8"] .article-photo:first-child img { flex: none; aspect-ratio: 4 / 3; height: auto; }
+  .photo-grid[data-count="5"] .article-photo:first-child img { flex: none; aspect-ratio: 16 / 9; height: auto; }
+}
+
+@media (max-width: 560px) {
+  .article-essay, .article-travel, .article-game { width: var(--wrap); }
+  .post-card .post-cover { width: calc(100% + 44px); margin: 0 -22px 18px; }
+  .diary-row { grid-template-columns: 58px minmax(0, 1fr); gap: 16px; padding: 18px; }
+  .diary-date { padding-right: 14px; }
+  .diary-date strong { font-size: 1.6rem; }
+  .board-travel { grid-template-columns: 1fr; }
+  .lightbox-prev, .lightbox-next { top: auto; bottom: 14px; transform: none; }
+}
+
+@media print {
+  .related-posts, .lightbox { display: none !important; }
+  .review-card { float: none; width: auto; margin: 0 0 20px; }
+}
