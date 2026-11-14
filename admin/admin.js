@@ -30,6 +30,11 @@
   const CREDENTIAL_PATH = "admin/credential.json";
   const KDF_ITERATIONS = 1000000;
   const MIN_PASSWORD_LENGTH = 10;
+  // 输错锁定：连续输错 5 次锁 5 分钟，之后每多错一次时间翻倍，最长 24 小时。
+  const LOCK_KEY = "qm_admin_lock";
+  const LOCK_AFTER = 5;
+  const LOCK_BASE_MS = 5 * 60 * 1000;
+  const LOCK_MAX_MS = 24 * 60 * 60 * 1000;
 
   const app = document.getElementById("app");
   const toastRegion = document.getElementById("toasts");
@@ -225,6 +230,48 @@
         .catch(() => null);
     }
     return credentialRequest;
+  }
+
+  /* ---------- wrong-password lockout (per browser) ---------- */
+
+  let memoryLock = { fails: 0, until: 0 };
+
+  function readLock() {
+    try {
+      const value = JSON.parse(localStorage.getItem(LOCK_KEY) || "null");
+      if (value && Number.isFinite(value.fails) && Number.isFinite(value.until)) return value;
+    } catch {
+      /* fall through */
+    }
+    return memoryLock;
+  }
+
+  function writeLock(lock) {
+    memoryLock = lock;
+    try {
+      if (lock.fails) localStorage.setItem(LOCK_KEY, JSON.stringify(lock));
+      else localStorage.removeItem(LOCK_KEY);
+    } catch {
+      /* 存不下来时只在本次打开页面期间生效 */
+    }
+  }
+
+  const lockRemaining = () => Math.max(0, readLock().until - Date.now());
+
+  function recordFailure() {
+    const fails = readLock().fails + 1;
+    const until =
+      fails >= LOCK_AFTER ? Date.now() + Math.min(LOCK_BASE_MS * 2 ** (fails - LOCK_AFTER), LOCK_MAX_MS) : 0;
+    writeLock({ fails, until });
+    return Math.max(0, LOCK_AFTER - fails);
+  }
+
+  function formatWait(ms) {
+    const seconds = Math.ceil(ms / 1000);
+    if (seconds < 60) return `${seconds} 秒`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes} 分 ${seconds % 60} 秒`;
+    return `${Math.floor(minutes / 60)} 小时 ${minutes % 60} 分`;
   }
 
   function passwordProblem(password, confirmation) {
@@ -647,6 +694,31 @@
       submit.textContent = "登录";
     };
 
+    // 锁定期间禁用输入并显示倒计时；页面刷新或重新打开后仍然有效。
+    let lockTimer = 0;
+    const showLock = () => {
+      clearInterval(lockTimer);
+      const tick = () => {
+        if (!input.isConnected) {
+          clearInterval(lockTimer);
+          return true;
+        }
+        const remaining = lockRemaining();
+        if (remaining > 0) {
+          input.disabled = true;
+          submit.disabled = true;
+          errorBox.textContent = `密码输错次数太多，已暂时锁定。请 ${formatWait(remaining)}后再试。`;
+          return false;
+        }
+        clearInterval(lockTimer);
+        input.disabled = false;
+        submit.disabled = false;
+        errorBox.textContent = "";
+        return true;
+      };
+      if (!tick()) lockTimer = setInterval(tick, 1000);
+    };
+
     const form = h(
       "form",
       {
@@ -654,6 +726,10 @@
         onsubmit: async (event) => {
           event.preventDefault();
           if (!input.value) return;
+          if (lockRemaining() > 0) {
+            showLock();
+            return;
+          }
           submit.disabled = true;
           submit.textContent = "正在验证…";
           errorBox.textContent = "";
@@ -661,10 +737,18 @@
           try {
             token = await decryptToken(credential, input.value);
           } catch {
-            fail("密码不对。");
-            input.select();
+            const attemptsLeft = recordFailure();
+            submit.textContent = "登录";
+            input.value = "";
+            if (attemptsLeft > 0) {
+              fail(`密码不对，还可以再试 ${attemptsLeft} 次。`);
+              input.focus();
+            } else {
+              showLock();
+            }
             return;
           }
+          writeLock({ fails: 0, until: 0 });
           try {
             await verifyToken(token);
           } catch (error) {
@@ -690,7 +774,8 @@
       ),
     );
     setView(loginHeader(), form);
-    input.focus();
+    if (lockRemaining() > 0) showLock();
+    else input.focus();
   }
 
   function renderTokenLogin(message, hasPassword) {
@@ -1365,6 +1450,7 @@
           {},
           h("li", {}, "你的 GitHub 令牌会用这个密码加密，保存成网站里的一个文件。登录时在浏览器里用密码解开。密码本身不会保存在任何地方。"),
           h("li", {}, "这个加密文件是公开的，任何人都能下载下来慢慢猜密码，而且没有次数限制。", h("strong", {}, "所以密码越长、越不像名字和生日越好"), "，比如一句只有你知道的话。"),
+          h("li", {}, "在登录页连续输错 5 次密码会锁定 5 分钟，之后每多错一次锁定时间翻倍。这个锁定记在浏览器里，能挡住在登录页上乱试的人，但挡不住上面说的“下载文件后离线猜”，所以密码强度仍然是关键。"),
           h("li", {}, "更换密码不会让旧密码失效——旧的加密文件还留在仓库历史里。如果担心密码泄露，要到 GitHub 把令牌删掉、重新创建一个，再用新令牌登录并设置密码。"),
           h("li", {}, "令牌过期后密码登录会失效，用新令牌登录一次并重新设置密码即可。"),
         ),
