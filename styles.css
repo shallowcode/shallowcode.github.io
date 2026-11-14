@@ -198,6 +198,48 @@ p { margin: 0; }
 }
 .brand:hover .brand-mark { transform: rotate(-6deg) scale(1.05); }
 
+.brand-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 管理员入口：平时是一把不起眼的小锁，登录过的设备上显示“管理” */
+.admin-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 6px;
+  border-radius: 999px;
+  color: var(--faint);
+  font-size: 0.86rem;
+  opacity: 0.7;
+  transition: opacity 180ms ease, color 180ms ease, background 180ms ease;
+}
+.admin-link svg { width: 15px; height: 15px; }
+.admin-link-text { display: none; }
+.admin-link:hover,
+.admin-link:focus-visible { opacity: 1; color: var(--accent-text); }
+
+:root[data-admin] .admin-link {
+  padding: 0 11px;
+  background: color-mix(in srgb, var(--terra) 14%, transparent);
+  color: var(--accent-text);
+  font-weight: 500;
+  opacity: 1;
+}
+:root[data-admin] .admin-link-text { display: inline; }
+
+.edit-link {
+  color: var(--accent-text);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .nav-actions {
   display: flex;
   align-items: center;
@@ -894,7 +936,7 @@ p { margin: 0; }
 }
 
 @media print {
-  .site-header, .site-footer, .progress-bar, .article-sidebar, .post-nav, .back-link, .skip-link { display: none !important; }
+  .site-header, .site-footer, .progress-bar, .article-sidebar, .post-nav, .back-link, .skip-link, .edit-link { display: none !important; }
   body { background: #fff; color: #000; }
   .article-main, .board-main { width: 100%; padding: 0; }
   .article-content-grid { display: block; }

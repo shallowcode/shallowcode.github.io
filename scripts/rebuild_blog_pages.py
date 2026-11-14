@@ -45,6 +45,12 @@ THEME_INIT_SCRIPT = (
 
 FONT_URL = "https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap"
 
+ADMIN_ICON = (
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" '
+    'stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/>'
+    '<path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>'
+)
+
 THEME_TOGGLE = """<button class="theme-toggle" type="button" aria-label="切换深色模式">
             <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a7 7 0 1 0 10.5 10.5z"/></svg>
             <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
@@ -162,9 +168,14 @@ def site_header(prefix: str, current: str = "") -> str:
 
     <header class="site-header">
       <nav class="nav-shell" aria-label="主导航">
-        <a class="brand" href="{prefix}index.html" aria-label="{SITE_NAME} · 回到首页">
-          <span class="brand-mark">{SITE_NAME}</span>
-        </a>
+        <div class="brand-group">
+          <a class="brand" href="{prefix}index.html" aria-label="{SITE_NAME} · 回到首页">
+            <span class="brand-mark">{SITE_NAME}</span>
+          </a>
+          <a class="admin-link" href="{prefix}admin/index.html" aria-label="管理员登录" title="管理员登录">
+            {ADMIN_ICON}<span class="admin-link-text">管理</span>
+          </a>
+        </div>
         <div class="nav-actions">
           <div class="nav-links">
 {nav_links}

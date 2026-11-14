@@ -52,6 +52,26 @@ GitHub 官方说明：[创建 GitHub Pages 站点](https://docs.github.com/en/pa
 - 项目内写作 skill：`skills/qianmeng-blog-writer/SKILL.md`
 - 新文章模板：`templates/post-template.html`
 
+## 网页端管理（管理员模式）
+
+每个页面左上角「浅梦」旁边有一把小锁，点它进入 `admin/` 管理页。登录后可以直接在网页上：
+
+- 写新文章、编辑和删除已有文章（支持插入图片，大图会自动压缩）
+- 浏览、修改、新建、上传、删除网站里的任何文件
+
+**登录用的是 GitHub 访问令牌，不是密码。** 这个网站是纯静态的、没有服务器，写在网页里的密码任何人都能看到，所以只能借用 GitHub 的权限：
+
+1. 打开 <https://github.com/settings/personal-access-tokens/new>（细粒度令牌）。
+2. Repository access 选 **Only select repositories**，只勾选这个仓库。
+3. Repository permissions 里把 **Contents** 设为 **Read and write**，其他不用动。
+4. 生成后把 `github_pat_` 开头的字符串粘贴到登录框。
+
+令牌只保存在当前设备的浏览器里，只会发给 `api.github.com`。不用了可以在管理页点“退出登录”，或到 GitHub 上把令牌删掉。
+
+工作方式：管理页只把 Markdown 和图片提交到仓库；提交后 GitHub Actions 运行 `scripts/sync_site.py`，生成文章页、首页卡片、板块页、RSS 等，再把生成结果提交回仓库并部署。所以保存后要等 1–2 分钟才会在网站上看到。
+
+注意：网页端提交之后，本地仓库要先 `git pull` 再用本地发布后台，否则推送会被拒绝。
+
 ## 写文章
 
 推荐使用本地发布后台：

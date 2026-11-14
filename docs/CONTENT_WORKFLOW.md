@@ -8,6 +8,12 @@
 - 照片或截图：放到 `assets/uploads/<文章英文名>/`，或者先写清楚图片文件名和说明。
 - 发布倾向：想放到 `随笔`、`旅行`、`游戏`，或者让 Codex 帮你判断。
 
+## 在网页上写（最省事）
+
+点网站左上角「浅梦」旁边的小锁进入管理页，用 GitHub 令牌登录（步骤见 `README.md`），点“写新文章”。发布后等 1–2 分钟网站自动更新。手机上也能用。
+
+`content/inbox/` 里的每个 Markdown（需要有 `title` 和 `date`）就是一篇已发布的文章：每次部署都会按 Markdown 重新生成对应的文章页，所以要改文章请改 Markdown，不要直接改 `posts/` 里的 HTML。
+
 ## 用 Markdown 写作
 
 新文章可以先写成 Markdown，放在 `content/inbox/`。文件开头用 front matter 写清楚发布信息：

@@ -45,6 +45,29 @@
     if (!storedTheme()) applyTheme(event.matches ? "dark" : "light");
   });
 
+  // 管理员：登录过的设备上，品牌旁的入口显示为“管理”，文章页多一个“编辑本文”
+  const adminLink = document.querySelector(".admin-link");
+  let isAdmin = false;
+  try {
+    isAdmin = Boolean(localStorage.getItem("qm_admin_token") || sessionStorage.getItem("qm_admin_token"));
+  } catch {
+    isAdmin = false;
+  }
+  if (isAdmin && adminLink) {
+    root.dataset.admin = "1";
+    adminLink.setAttribute("aria-label", "进入管理后台");
+    adminLink.title = "进入管理后台";
+    const article = document.querySelector(".article-body[data-slug]");
+    const meta = document.querySelector(".article-meta");
+    if (article && meta) {
+      const editLink = document.createElement("a");
+      editLink.className = "edit-link";
+      editLink.href = `${adminLink.getAttribute("href")}#/edit/${encodeURIComponent(article.dataset.slug)}`;
+      editLink.textContent = "编辑本文";
+      meta.append(" · ", editLink);
+    }
+  }
+
   // 顶部阅读进度条
   const progressBar = document.querySelector(".progress-bar");
   if (progressBar) {

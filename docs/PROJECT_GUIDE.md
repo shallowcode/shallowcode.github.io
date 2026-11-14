@@ -13,7 +13,9 @@ D:\qianmeng-blog/
   feed.xml / sitemap.xml      # RSS 订阅和站点地图，脚本自动生成，不要手改
   robots.txt                  # 搜索引擎抓取规则
   boards/                     # 三个板块页，脚本自动生成
-  scripts/                    # 发布脚本；rebuild_blog_pages.py 负责生成全站页面
+  admin/                      # 网页端管理页（登录、写文章、管理文件），见 README
+  scripts/                    # 发布脚本；rebuild_blog_pages.py 负责生成全站页面，
+                              # sync_site.py 在部署时把 Markdown 同步成页面
   posts/                      # 已发布文章，每篇文章一个 HTML 文件
   assets/uploads/             # 你自己的照片、截图、封面图
   content/inbox/              # 可选：原始素材、零散想法、照片说明
