@@ -169,6 +169,18 @@
 
 /* ---------- login ---------- */
 
+.password-setup {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 14px 16px 16px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-sm);
+}
+.password-setup legend { padding: 0 6px; color: var(--ink-soft); font-size: 0.9rem; font-weight: 500; }
+.login-help ul { margin: 14px 0 0; padding-left: 1.3em; color: var(--ink-soft); }
+.login-help ul li::marker { color: var(--terra); }
+
 .login-card { display: grid; gap: 16px; max-width: 560px; }
 .login-card .btn { justify-self: start; min-width: 120px; }
 

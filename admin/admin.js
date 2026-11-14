@@ -26,6 +26,10 @@
   const IMAGE_EXTENSIONS = /\.(png|jpe?g|gif|webp|avif|svg|ico)$/i;
   const GENERATED_FILES = /^(posts\/[^/]+\.html|boards\/[^/]+\.html|feed\.xml|sitemap\.xml)$/;
   const MAX_IMAGE_SIDE = 2000;
+  // 密码登录：令牌用密码加密后存在这个文件里（密码本身不会出现在任何地方）。
+  const CREDENTIAL_PATH = "admin/credential.json";
+  const KDF_ITERATIONS = 1000000;
+  const MIN_PASSWORD_LENGTH = 10;
 
   const app = document.getElementById("app");
   const toastRegion = document.getElementById("toasts");
@@ -146,6 +150,87 @@
     state.dirty = false;
     document.documentElement.removeAttribute("data-admin");
     renderLogin(message);
+  }
+
+  /* ---------- password login (encrypted token) ---------- */
+
+  async function deriveKey(password, salt, iterations) {
+    const material = await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(password.normalize("NFKC")),
+      "PBKDF2",
+      false,
+      ["deriveKey"],
+    );
+    return crypto.subtle.deriveKey(
+      { name: "PBKDF2", hash: "SHA-256", salt, iterations },
+      material,
+      { name: "AES-GCM", length: 256 },
+      false,
+      ["encrypt", "decrypt"],
+    );
+  }
+
+  const credentialContext = () => new TextEncoder().encode(`${CONFIG.owner}/${CONFIG.repo}`);
+
+  async function encryptToken(token, password) {
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const key = await deriveKey(password, salt, KDF_ITERATIONS);
+    const data = await crypto.subtle.encrypt(
+      { name: "AES-GCM", iv, additionalData: credentialContext() },
+      key,
+      new TextEncoder().encode(JSON.stringify({ token })),
+    );
+    const credential = {
+      version: 1,
+      kdf: "PBKDF2-SHA256",
+      iterations: KDF_ITERATIONS,
+      cipher: "AES-256-GCM",
+      salt: bytesToBase64(salt),
+      iv: bytesToBase64(iv),
+      data: bytesToBase64(new Uint8Array(data)),
+    };
+    return `${JSON.stringify(credential, null, 2)}\n`;
+  }
+
+  /* 密码不对时 AES-GCM 校验失败，这里会抛出异常。 */
+  async function decryptToken(credential, password) {
+    const key = await deriveKey(password, base64ToBytes(credential.salt), credential.iterations);
+    const plain = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: base64ToBytes(credential.iv), additionalData: credentialContext() },
+      key,
+      base64ToBytes(credential.data),
+    );
+    return JSON.parse(new TextDecoder().decode(plain)).token;
+  }
+
+  const isCredential = (value) =>
+    Boolean(value) &&
+    value.version === 1 &&
+    typeof value.salt === "string" &&
+    typeof value.iv === "string" &&
+    typeof value.data === "string" &&
+    Number.isInteger(value.iterations) &&
+    value.iterations >= 100000 &&
+    value.iterations <= 10000000;
+
+  let credentialRequest = null;
+
+  function loadCredential(force = false) {
+    if (!credentialRequest || force) {
+      credentialRequest = fetch("credential.json", { cache: "no-store" })
+        .then((response) => (response.ok ? response.json() : null))
+        .then((value) => (isCredential(value) ? value : null))
+        .catch(() => null);
+    }
+    return credentialRequest;
+  }
+
+  function passwordProblem(password, confirmation) {
+    if (password.length < MIN_PASSWORD_LENGTH) return `密码至少要 ${MIN_PASSWORD_LENGTH} 位。`;
+    if (password !== confirmation) return "两次输入的密码不一样。";
+    return "";
   }
 
   /* ---------- GitHub API ---------- */
@@ -494,6 +579,7 @@
       { class: "admin-tabs", "aria-label": "管理" },
       tab("posts", "文章", "#/posts"),
       tab("files", "文件", "#/files/"),
+      tab("password", "密码", "#/password"),
       h("span", { class: "admin-tabs-spacer" }),
       h("a", { class: "admin-tab", href: "../index.html" }, "查看网站"),
       h("button", { class: "admin-tab", type: "button", onclick: () => confirmLeave() && logout() }, "退出登录"),
@@ -521,7 +607,93 @@
 
   /* ---------- login ---------- */
 
-  function renderLogin(message) {
+  async function verifyToken(token) {
+    const repo = await gh("", { token });
+    // 没带有效令牌时 GitHub 不会返回 permissions，所以这里必须明确看到 push 权限。
+    if (!repo.permissions || !repo.permissions.push) {
+      throw new Error("这个令牌没有这个仓库的写入权限，请按下面的步骤重新创建一个。");
+    }
+  }
+
+  function startSession(token, remember) {
+    state.token = token;
+    storeToken(token, remember);
+    document.documentElement.setAttribute("data-admin", "1");
+  }
+
+  function enterAdmin() {
+    if (!location.hash || location.hash === "#/login") location.hash = "#/posts";
+    else route();
+  }
+
+  const loginHeader = () => pageHeader("Admin", "管理员登录", "登录后可以在网页上写文章、改文章、管理网站文件。");
+
+  async function renderLogin(message, useToken = false) {
+    setView(loginHeader(), loading());
+    const credential = await loadCredential(true);
+    if (state.token) return;
+    if (credential && !useToken) renderPasswordLogin(credential, message);
+    else renderTokenLogin(message, Boolean(credential));
+  }
+
+  function renderPasswordLogin(credential, message) {
+    const input = h("input", { type: "password", id: "password", name: "password", autocomplete: "current-password", required: true });
+    const remember = h("input", { type: "checkbox", id: "remember", checked: true });
+    const submit = h("button", { class: "btn btn-primary", type: "submit" }, "登录");
+    const errorBox = h("p", { class: "form-error", role: "alert" }, message || "");
+    const fail = (text) => {
+      errorBox.textContent = text;
+      submit.disabled = false;
+      submit.textContent = "登录";
+    };
+
+    const form = h(
+      "form",
+      {
+        class: "admin-card login-card",
+        onsubmit: async (event) => {
+          event.preventDefault();
+          if (!input.value) return;
+          submit.disabled = true;
+          submit.textContent = "正在验证…";
+          errorBox.textContent = "";
+          let token;
+          try {
+            token = await decryptToken(credential, input.value);
+          } catch {
+            fail("密码不对。");
+            input.select();
+            return;
+          }
+          try {
+            await verifyToken(token);
+          } catch (error) {
+            fail(
+              error.status === 401 || error.status === 404
+                ? "密码正确，但保存的 GitHub 令牌已经失效（过期或被删除）。请改用新令牌登录，再重新设置一次密码。"
+                : error.message,
+            );
+            return;
+          }
+          startSession(token, remember.checked);
+          enterAdmin();
+        },
+      },
+      h("label", { class: "field", for: "password" }, h("span", {}, "管理员密码"), input),
+      h("label", { class: "check", for: "remember" }, remember, h("span", {}, "在这台设备上保持登录")),
+      errorBox,
+      h(
+        "div",
+        { class: "admin-actions" },
+        submit,
+        h("button", { class: "link-button", type: "button", onclick: () => renderLogin("", true) }, "改用 GitHub 令牌登录"),
+      ),
+    );
+    setView(loginHeader(), form);
+    input.focus();
+  }
+
+  function renderTokenLogin(message, hasPassword) {
     const input = h("input", {
       type: "password",
       id: "token",
@@ -531,6 +703,8 @@
       placeholder: "github_pat_…",
       required: true,
     });
+    const newPassword = h("input", { type: "password", id: "new-password", autocomplete: "new-password", placeholder: `至少 ${MIN_PASSWORD_LENGTH} 位，可以留空` });
+    const confirmPassword = h("input", { type: "password", id: "confirm-password", autocomplete: "new-password", placeholder: "再输入一次" });
     const remember = h("input", { type: "checkbox", id: "remember", checked: true });
     const submit = h("button", { class: "btn btn-primary", type: "submit" }, "登录");
     const errorBox = h("p", { class: "form-error", role: "alert" }, message || "");
@@ -546,57 +720,78 @@
           event.preventDefault();
           const token = input.value.trim();
           if (!token) return;
+          errorBox.textContent = "";
+          const wantsPassword = Boolean(newPassword.value || confirmPassword.value);
+          const problem = wantsPassword ? passwordProblem(newPassword.value, confirmPassword.value) : "";
+          if (problem) {
+            errorBox.textContent = problem;
+            return;
+          }
           submit.disabled = true;
           submit.textContent = "正在验证…";
-          errorBox.textContent = "";
           try {
-            const repo = await gh("", { token });
-            // 没带有效令牌时 GitHub 不会返回 permissions，所以这里必须明确看到 push 权限。
-            if (!repo.permissions || !repo.permissions.push) {
-              throw new Error("这个令牌没有这个仓库的写入权限，请按下面的步骤重新创建一个。");
-            }
-            state.token = token;
-            storeToken(token, remember.checked);
-            document.documentElement.setAttribute("data-admin", "1");
-            if (!location.hash || location.hash === "#/login") location.hash = "#/posts";
-            else route();
+            await verifyToken(token);
           } catch (error) {
             errorBox.textContent =
               error.status === 404 ? "令牌看不到这个仓库。创建令牌时请在 Repository access 里选中它。" : error.message;
             submit.disabled = false;
             submit.textContent = "登录";
+            return;
           }
+          startSession(token, remember.checked);
+          if (wantsPassword) {
+            const text = await encryptToken(token, newPassword.value);
+            if (await runCommit("Set admin password", [{ path: CREDENTIAL_PATH, text }], "登录密码已设置。")) loadCredential(true);
+          }
+          enterAdmin();
         },
       },
       h("label", { class: "field", for: "token" }, h("span", {}, "GitHub 访问令牌"), input),
+      h(
+        "fieldset",
+        { class: "password-setup" },
+        h("legend", {}, hasPassword ? "同时更换登录密码（可选）" : "同时设置登录密码（可选）"),
+        h("p", { class: "muted" }, "设置之后，以后在任何设备上只输入密码就能登录，不用再找令牌。"),
+        h(
+          "div",
+          { class: "field-row" },
+          h("label", { class: "field", for: "new-password" }, h("span", {}, "新密码"), newPassword),
+          h("label", { class: "field", for: "confirm-password" }, h("span", {}, "确认密码"), confirmPassword),
+        ),
+      ),
       h("label", { class: "check", for: "remember" }, remember, h("span", {}, "在这台设备上保持登录")),
       errorBox,
-      submit,
+      h(
+        "div",
+        { class: "admin-actions" },
+        submit,
+        hasPassword ? h("button", { class: "link-button", type: "button", onclick: () => renderLogin("") }, "改用密码登录") : null,
+      ),
     );
 
     const steps = h(
       "section",
       { class: "admin-card login-help" },
-      h("h2", {}, "第一次登录：创建令牌"),
+      h("h2", {}, "怎么拿到令牌"),
       h(
         "p",
         {},
-        "这个网站没有服务器，所以没法用“账号 + 密码”登录——写在网页里的密码任何人都能看到。" +
-          "这里用 GitHub 的访问令牌代替密码：只有持有令牌的人才能修改网站。",
+        "这个网站没有服务器，能修改网站的“钥匙”是 GitHub 的访问令牌。令牌只需要创建一次：" +
+          "在上面顺便设一个密码，令牌就会用密码加密后保存到网站里，之后只用密码登录。",
       ),
       h(
         "ol",
         {},
         h("li", {}, "打开 ", h("a", { href: tokenUrl, target: "_blank", rel: "noopener" }, "GitHub 的“新建细粒度令牌”页面"), "（需要先登录 GitHub）。"),
-        h("li", {}, "Expiration（有效期）按需选择，到期后重新创建一个即可。"),
+        h("li", {}, "Expiration（有效期）按需选择。到期后密码登录也会失效，需要用新令牌再登录一次。"),
         h("li", {}, "Repository access 选 ", h("strong", {}, "Only select repositories"), "，然后只勾选 ", h("code", {}, CONFIG.repo), "。"),
         h("li", {}, "Permissions → Repository permissions 里把 ", h("strong", {}, "Contents"), " 设为 ", h("strong", {}, "Read and write"), "，其他都不用动。"),
         h("li", {}, "点 Generate token，把 ", h("code", {}, "github_pat_"), " 开头的那串字符粘贴到上面。"),
       ),
-      h("p", { class: "muted" }, "令牌只保存在这台设备的浏览器里，只会发送给 api.github.com。不要在别人的电脑上勾选“保持登录”。"),
+      h("p", { class: "muted" }, "令牌只会发送给 api.github.com。不要在别人的电脑上勾选“保持登录”。"),
     );
 
-    setView(pageHeader("Admin", "管理员登录", "登录后可以在网页上写文章、改文章、管理网站文件。"), form, steps);
+    setView(loginHeader(), form, steps);
     input.focus();
   }
 
@@ -1044,6 +1239,7 @@
     const notices = [];
     if (GENERATED_FILES.test(path)) notices.push("这个文件是自动生成的，手动改动会在下次发布文章时被覆盖。");
     if (dirname(path) === CONFIG.inbox && /\.md$/i.test(path)) notices.push("这是一篇文章的 Markdown 源文件，在“文章”页里编辑会更方便。");
+    if (path === CREDENTIAL_PATH) notices.push("这是加密后的登录凭证。要改密码请到“密码”页，不要手动编辑这个文件。");
     if (path.startsWith(".github/")) notices.push("这里是部署配置。当前令牌没有修改它的权限，需要到 GitHub 上改。");
     const noticeNodes = notices.map((text) => h("p", { class: "notice" }, text));
 
@@ -1113,6 +1309,69 @@
     if (isNew) editor.focus();
   }
 
+  /* ---------- password settings ---------- */
+
+  function renderPassword() {
+    const hasPassword = Boolean(findEntry(CREDENTIAL_PATH));
+    const newPassword = h("input", { type: "password", id: "new-password", autocomplete: "new-password", placeholder: `至少 ${MIN_PASSWORD_LENGTH} 位` });
+    const confirmPassword = h("input", { type: "password", id: "confirm-password", autocomplete: "new-password", placeholder: "再输入一次" });
+    const errorBox = h("p", { class: "form-error", role: "alert" });
+
+    const save = async (event) => {
+      event.preventDefault();
+      errorBox.textContent = passwordProblem(newPassword.value, confirmPassword.value);
+      if (errorBox.textContent) return;
+      const text = await encryptToken(state.token, newPassword.value);
+      const message = hasPassword ? "Change admin password" : "Set admin password";
+      if (await runCommit(message, [{ path: CREDENTIAL_PATH, text }], hasPassword ? "密码已更换。" : "密码已设置。")) {
+        loadCredential(true);
+        renderPassword();
+      }
+    };
+    const remove = async () => {
+      if (!window.confirm("取消后只能用 GitHub 令牌登录。确定吗？")) return;
+      if (await runCommit("Remove admin password", [{ path: CREDENTIAL_PATH, remove: true }], "已取消密码登录。")) {
+        loadCredential(true);
+        renderPassword();
+      }
+    };
+
+    setView(
+      tabs("password"),
+      pageHeader(
+        "Password",
+        "登录密码",
+        hasPassword ? "已经设置了登录密码。在这里可以更换或取消。" : "还没有设置密码。设置后，在任何设备上输入密码就能登录。",
+      ),
+      h(
+        "form",
+        { class: "admin-card login-card", onsubmit: save },
+        h("label", { class: "field", for: "new-password" }, h("span", {}, hasPassword ? "新密码" : "密码"), newPassword),
+        h("label", { class: "field", for: "confirm-password" }, h("span", {}, "确认密码"), confirmPassword),
+        errorBox,
+        h(
+          "div",
+          { class: "admin-actions" },
+          h("button", { class: "btn btn-primary", type: "submit" }, hasPassword ? "更换密码" : "设置密码"),
+          hasPassword ? h("button", { class: "btn btn-danger", type: "button", onclick: remove }, "取消密码登录") : null,
+        ),
+      ),
+      h(
+        "section",
+        { class: "admin-card login-help" },
+        h("h2", {}, "密码是怎么起作用的"),
+        h(
+          "ul",
+          {},
+          h("li", {}, "你的 GitHub 令牌会用这个密码加密，保存成网站里的一个文件。登录时在浏览器里用密码解开。密码本身不会保存在任何地方。"),
+          h("li", {}, "这个加密文件是公开的，任何人都能下载下来慢慢猜密码，而且没有次数限制。", h("strong", {}, "所以密码越长、越不像名字和生日越好"), "，比如一句只有你知道的话。"),
+          h("li", {}, "更换密码不会让旧密码失效——旧的加密文件还留在仓库历史里。如果担心密码泄露，要到 GitHub 把令牌删掉、重新创建一个，再用新令牌登录并设置密码。"),
+          h("li", {}, "令牌过期后密码登录会失效，用新令牌登录一次并重新设置密码即可。"),
+        ),
+      ),
+    );
+  }
+
   /* ---------- router ---------- */
 
   let currentHash = "";
@@ -1132,13 +1391,15 @@
     const argument = decodeURI(rest.join("/"));
     try {
       if (!state.treeLoaded) {
-        setView(tabs(kind === "files" || kind === "file" ? "files" : "posts"), loading("正在读取仓库…"));
+        const activeTab = kind === "files" || kind === "file" ? "files" : kind === "password" ? "password" : "posts";
+        setView(tabs(activeTab), loading("正在读取仓库…"));
         await loadTree();
       }
       if (kind === "new") await renderEditor("");
       else if (kind === "edit") await renderEditor(argument);
       else if (kind === "files") renderFiles(argument);
       else if (kind === "file" && argument) await renderFile(argument);
+      else if (kind === "password") renderPassword();
       else await renderPosts();
     } catch (error) {
       if (error.status === 401) {
