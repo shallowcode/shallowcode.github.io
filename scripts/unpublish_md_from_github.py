@@ -139,7 +139,7 @@ def main() -> int:
     rebuild_blog_pages.rebuild_all()
 
     # 6. Stage every path that may have changed (modifications and deletions).
-    for rel_path in ["index.html", "posts", "boards", "content/inbox", rel(uploads_dir)]:
+    for rel_path in ["index.html", "posts", "boards", "sitemap.xml", "feed.xml", "content/inbox", rel(uploads_dir)]:
         stage_if_present(rel_path)
 
     diff_check = run_git(["diff", "--cached", "--quiet"], check=False)

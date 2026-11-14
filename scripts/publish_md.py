@@ -11,6 +11,8 @@ from datetime import date
 from pathlib import Path
 from urllib.parse import urlparse
 
+import rebuild_blog_pages
+
 
 ROOT = Path(__file__).resolve().parents[1]
 POSTS_DIR = ROOT / "posts"
@@ -80,6 +82,7 @@ def text_without_markdown(markdown: str) -> str:
     text = re.sub(r"!\[([^\]]*)\]\([^)]+\)", r"\1", text)
     text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
     text = re.sub(r"^#{1,6}\s+", "", text, flags=re.M)
+    text = re.sub(r"^\s*[-*+]\s+\[[ xX]\]\s*", "", text, flags=re.M)
     text = re.sub(r"[*_`>#-]", "", text)
     text = re.sub(r"\s+", " ", text).strip()
     return text
@@ -100,6 +103,9 @@ def first_paragraph(markdown: str) -> str:
             continue
         return text_without_markdown(stripped)
     return text_without_markdown(markdown)
+
+
+TASK_ITEM = re.compile(r"^\[([ xX])\]\s+(.*)$")
 
 
 def ensure_inside_root(path: Path) -> Path:
@@ -179,11 +185,11 @@ def inline_markdown(
                 caption_html = f"          <figcaption>{escaped_caption}</figcaption>\n"
             return token(
                 '        <figure class="article-photo">\n'
-                f'          <img src="{escaped_src}" alt="{escaped_alt}">\n'
+                f'          <img src="{escaped_src}" alt="{escaped_alt}" loading="lazy" decoding="async">\n'
                 f"{caption_html}"
                 "        </figure>"
             )
-        return token(f'<img src="{escaped_src}" alt="{escaped_alt}">')
+        return token(f'<img src="{escaped_src}" alt="{escaped_alt}" loading="lazy" decoding="async">')
 
     def code_repl(match: re.Match[str]) -> str:
         return token(f"<code>{html.escape(match.group(1), quote=False)}</code>")
@@ -220,9 +226,20 @@ def close_list(output: list[str], list_items: list[str], ordered: bool, md_path:
     if not list_items:
         return
     tag = "ol" if ordered else "ul"
-    output.append(f"        <{tag}>")
+    is_task_list = not ordered and all(TASK_ITEM.match(item) for item in list_items)
+    output.append(f'        <{tag} class="task-list">' if is_task_list else f"        <{tag}>")
     for item in list_items:
-        output.append(f"          <li>{inline_markdown(item, md_path, slug, copy_images)}</li>")
+        task = TASK_ITEM.match(item) if is_task_list else None
+        if task:
+            done = task.group(1).lower() == "x"
+            text = inline_markdown(task.group(2), md_path, slug, copy_images)
+            item_class = "task-item is-done" if done else "task-item"
+            checked = " checked" if done else ""
+            output.append(
+                f'          <li class="{item_class}"><input type="checkbox" disabled{checked}><span>{text}</span></li>'
+            )
+        else:
+            output.append(f"          <li>{inline_markdown(item, md_path, slug, copy_images)}</li>")
     output.append(f"        </{tag}>")
     list_items.clear()
 
@@ -281,6 +298,12 @@ def markdown_to_html(markdown: str, md_path: Path, slug: str, copy_images: bool 
             close_list(output, list_items, list_ordered, md_path, slug, copy_images)
             close_quote(output, quote_lines, md_path, slug, copy_images)
             output.append(inline_markdown(stripped_line, md_path, slug, copy_images, block_images=True))
+            continue
+
+        if re.match(r"^#{1,6}\s*$", line):
+            close_paragraph(output, paragraph, md_path, slug, copy_images)
+            close_list(output, list_items, list_ordered, md_path, slug, copy_images)
+            close_quote(output, quote_lines, md_path, slug, copy_images)
             continue
 
         heading = re.match(r"^(#{1,6})\s+(.+)$", line)
@@ -394,34 +417,21 @@ def build_post(path: Path, copy_images: bool = True) -> Post:
     )
 
 
+def post_info(post: Post) -> rebuild_blog_pages.PostInfo:
+    return rebuild_blog_pages.PostInfo(
+        category=post.category,
+        date_text=post.date.replace("-", "."),
+        date_attr=post.date,
+        title=post.title,
+        href=f"posts/{post.slug}.html",
+        summary=post.summary,
+    )
+
+
 def render_article(post: Post) -> str:
-    category_cn, category_label = CATEGORIES[post.category]
-    date_display = post.date.replace("-", ".")
-    return f"""<!doctype html>
-<html lang="zh-CN" data-theme="light">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="{html.escape(post.summary, quote=True)}">
-    <title>{html.escape(post.title, quote=False)} | 浅梦</title>
-    <link rel="stylesheet" href="../styles.css">
-  </head>
-  <body>
-    <main class="article-main">
-      <a class="back-link" href="../index.html#posts">返回文章</a>
-      <header class="article-header">
-        <p class="eyebrow">{category_label}</p>
-        <h1>{html.escape(post.title, quote=False)}</h1>
-        <p class="article-meta">{date_display} · {category_cn}</p>
-      </header>
-      <article class="article-body" data-slug="{html.escape(post.slug, quote=True)}">
-{post.body_html}
-      </article>
-    </main>
-    <script src="../script.js"></script>
-  </body>
-</html>
-"""
+    """Standalone article page. rebuild_blog_pages.rebuild_all() adds the sidebar and prev/next links."""
+    info = post_info(post)
+    return rebuild_blog_pages.render_article_page(info, [info], post.body_html)
 
 
 def insert_after_marker(content: str, marker: str, snippet: str, unique: str) -> str:
@@ -448,36 +458,33 @@ def update_latest_panel(content: str, post: Post, link: str) -> str:
         count=1,
         flags=re.S,
     )
-    if count == 0:
-        fail("missing latest article panel in index.html")
-    return updated
+    # The homepage may not have a "latest article" panel; that is fine.
+    return updated if count else content
 
 
 def update_index(post: Post) -> None:
+    """Insert the post's card into index.html, or refresh it when it is already there.
+
+    The timeline, board pages and article navigation are derived from the cards by
+    rebuild_blog_pages.rebuild_all(), which every publish flow runs right after this.
+    """
     content = INDEX_PATH.read_text(encoding="utf-8")
-    category_cn, _ = CATEGORIES[post.category]
-    date_display = post.date.replace("-", ".")
     link = f"posts/{post.slug}.html"
+    post_card = rebuild_blog_pages.post_card(post_info(post))
 
-    post_card = (
-        f'          <article class="post-card" data-category="{post.category}">\n'
-        f"            <p class=\"post-meta\">{category_cn} · {date_display}</p>\n"
-        f'            <h3><a href="{link}">{html.escape(post.title, quote=False)}</a></h3>\n'
-        f"            <p>{html.escape(post.summary, quote=False)}</p>\n"
-        "          </article>"
-    )
-    timeline_item = (
-        '          <article class="timeline-item">\n'
-        f'            <time datetime="{post.date}">{date_display}</time>\n'
-        "            <div>\n"
-        f'              <h3><a href="{link}">{html.escape(post.title, quote=False)}</a></h3>\n'
-        f"              <p>{category_cn}</p>\n"
-        "            </div>\n"
-        "          </article>"
-    )
-
-    content = insert_after_marker(content, "          <!-- POST_CARDS_START -->", post_card, f'            <h3><a href="{link}">')
-    content = insert_after_marker(content, "          <!-- TIMELINE_START -->", timeline_item, f'              <h3><a href="{link}">')
+    existing = None
+    for match in re.finditer(
+        r'[ \t]*<article class="post-card(?:[^"]*)" data-category="[^"]*">.*?</article>',
+        content,
+        flags=re.S,
+    ):
+        if f'href="{link}"' in match.group(0):
+            existing = match
+            break
+    if existing:
+        content = content[:existing.start()] + post_card + content[existing.end():]
+    else:
+        content = insert_after_marker(content, "          <!-- POST_CARDS_START -->", post_card, f'href="{link}"')
     content = update_latest_panel(content, post, link)
 
     if post.album and post.cover_src and "          <!-- ALBUM_START -->" in content:

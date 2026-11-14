@@ -2,7 +2,7 @@
 
 项目位置：`D:\qianmeng-blog`
 
-这是一个可直接部署到 GitHub Pages 的静态个人博客，主页采用“板块 + 文章 + 时间线 + 照片墙”的结构。当前预设了三个板块：
+这是一个可直接部署到 GitHub Pages 的静态个人博客，主页采用“推荐阅读 + 时间线 + 板块入口”的结构，支持深色模式（默认跟随系统，右上角可手动切换）。当前预设了三个板块：
 
 - 感悟与随笔
 - 旅行与照片
@@ -36,11 +36,13 @@ GitHub 官方说明：[创建 GitHub Pages 站点](https://docs.github.com/en/pa
 
 ## 个性化位置
 
-- `index.html`：修改姓名、简介、GitHub 链接和联系方式。
+- `index.html`：首页。文章卡片、时间线、板块篇数都在 `<!-- XXX_START -->` / `<!-- XXX_END -->` 标记之间，由脚本自动生成，不要手改标记里面的内容。
+- `scripts/rebuild_blog_pages.py`：板块页、文章页的页头/导航/页脚、`sitemap.xml`、`feed.xml` 都由它生成。改了这里的模板后运行 `python scripts\rebuild_blog_pages.py` 即可全站刷新。站点地址 `SITE_URL` 也在这个文件开头。
 - `posts/`：新增或修改文章页面，按现有 HTML 文件复制一份再改标题和正文即可。
 - `templates/post-template.html`：新文章的 HTML 模板。
 - `assets/uploads/`：可以放自己的旅行照片、游戏截图和封面图。
-- `styles.css`：调整颜色、布局和移动端样式。
+- `styles.css`：调整颜色、布局和移动端样式。浅色配色在 `:root`，深色配色在 `:root[data-theme="dark"]`。
+- `favicon.svg`：浏览器标签页图标。
 
 ## 项目说明
 
@@ -75,5 +77,5 @@ start-blog-admin.bat
 1. 复制 `templates/post-template.html` 到 `posts/<slug>.html`。
 2. 修改标题、日期、板块、摘要和正文。
 3. 如有图片，放到 `assets/uploads/<slug>/` 并在文章里引用。
-4. 同步更新 `index.html` 的文章列表、时间线，必要时更新照片墙。
+4. 在 `index.html` 的 `<!-- POST_CARDS_START -->` 后面加一张文章卡片，然后运行 `python scripts\rebuild_blog_pages.py`，时间线、板块页、文章导航、`sitemap.xml` 和 `feed.xml` 会自动更新。
 5. 本地打开 `index.html` 和新文章页面检查链接与排版。

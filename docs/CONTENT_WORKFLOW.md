@@ -26,6 +26,9 @@ summary: 这是一篇首页摘要，会显示在文章卡片和时间线里。
 ## 小标题
 
 继续写正文。
+
+- [x] 任务列表会显示成勾选框
+- [ ] 还没做的事
 ```
 
 支持的 `category`：
@@ -72,7 +75,7 @@ cd /d D:\qianmeng-blog
 python scripts\publish_md.py content\inbox\2026-05-09-my-post.md
 ```
 
-这个命令会生成 `posts/<slug>.html`，并更新 `index.html` 的文章列表和时间线，同时刷新 `boards/` 下的板块页和文章页上一篇/下一篇。如果文章已存在，需要覆盖时加 `--force`。
+这个命令会生成 `posts/<slug>.html`，并更新 `index.html` 的文章列表和时间线，同时刷新 `boards/` 下的板块页、文章页上一篇/下一篇、`feed.xml` 和 `sitemap.xml`。如果文章已存在，需要覆盖时加 `--force`；重新发布时改过的标题、摘要、板块会同步到首页和全站。
 
 一键发布并推送到 GitHub：
 

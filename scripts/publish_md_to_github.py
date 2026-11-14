@@ -171,7 +171,16 @@ def main() -> int:
     publish_md.update_index(post)
     rebuild_blog_pages.rebuild_all()
 
-    stage_paths = [md_path, publish_md.POSTS_DIR, publish_md.INDEX_PATH, ROOT / "boards", upload_dir, *source_assets]
+    stage_paths = [
+        md_path,
+        publish_md.POSTS_DIR,
+        publish_md.INDEX_PATH,
+        ROOT / "boards",
+        rebuild_blog_pages.SITEMAP_PATH,
+        rebuild_blog_pages.FEED_PATH,
+        upload_dir,
+        *source_assets,
+    ]
     stage_existing(stage_paths)
 
     diff_check = run_git(["diff", "--cached", "--quiet"], check=False)

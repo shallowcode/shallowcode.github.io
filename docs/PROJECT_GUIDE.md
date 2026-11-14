@@ -6,9 +6,14 @@
 
 ```text
 D:\qianmeng-blog/
-  index.html                  # 首页：板块、文章列表、时间线、照片墙
+  index.html                  # 首页：推荐阅读、时间线、板块入口
   styles.css                  # 所有界面样式：颜色、布局、手机适配
-  script.js                   # 主题切换、文章筛选、导航高亮
+  script.js                   # 深色模式切换、顶部阅读进度条
+  favicon.svg                 # 浏览器标签页图标
+  feed.xml / sitemap.xml      # RSS 订阅和站点地图，脚本自动生成，不要手改
+  robots.txt                  # 搜索引擎抓取规则
+  boards/                     # 三个板块页，脚本自动生成
+  scripts/                    # 发布脚本；rebuild_blog_pages.py 负责生成全站页面
   posts/                      # 已发布文章，每篇文章一个 HTML 文件
   assets/uploads/             # 你自己的照片、截图、封面图
   content/inbox/              # 可选：原始素材、零散想法、照片说明
@@ -23,8 +28,9 @@ D:\qianmeng-blog/
 
 - 改首页结构：编辑 `index.html`
 - 改颜色、字体、卡片、时间线、照片墙：编辑 `styles.css`
-- 改筛选按钮、深色模式、滚动进度条：编辑 `script.js`
-- 改网站名字：通常在 `index.html` 的 `<title>`、导航栏、页脚，以及文章页 `<title>`
+- 改深色模式、滚动进度条：编辑 `script.js`
+- 改板块页/文章页的页头、导航、页脚：编辑 `scripts/rebuild_blog_pages.py` 里的模板，然后运行 `python scripts\rebuild_blog_pages.py`
+- 改网站名字或网址：`index.html`、`404.html`，以及 `scripts/rebuild_blog_pages.py` 开头的 `SITE_NAME` / `SITE_URL`
 - 改照片墙图片：修改 `index.html` 里 `#album` 区域的 `<img src="...">`
 
 ## 在哪里写文章
@@ -45,15 +51,16 @@ posts/game-afterthought.html
 - 待审稿可以放进 `content/drafts/`，确认后再整理成正式文章。
 - 照片或游戏截图可以放进 `assets/uploads/<文章英文名>/`。
 
-这些目录只是辅助整理，不会自动发布内容。发布时仍然需要手动生成文章 HTML，并同步更新首页。
+这些目录只是辅助整理，不会自动发布内容。发布请用本地发布后台或 `scripts/publish_md.py`（见 `docs/CONTENT_WORKFLOW.md`）。
 
 ## 首页要同步更新哪里
 
-发布一篇文章后，通常更新三处：
+用发布脚本时首页会自动更新。`#posts` 里的文章卡片是全站文章信息（标题、日期、板块、摘要）的唯一来源：
 
-- `#posts`：新增一张文章卡片
-- `#timeline`：新增一条时间线记录
-- `#album`：如果这篇文章有好看的照片，可以新增照片墙条目
+- `#posts`：发布脚本新增或更新文章卡片
+- `#timeline`、`#boards` 的篇数、板块页、文章页的侧栏和上一篇/下一篇、`feed.xml`、`sitemap.xml`：都由 `scripts/rebuild_blog_pages.py` 根据文章卡片重新生成
+
+手动改了卡片（比如改标题或摘要）之后，运行一次 `python scripts\rebuild_blog_pages.py` 即可同步到全站。
 
 ## 板块约定
 
@@ -63,4 +70,4 @@ posts/game-afterthought.html
 - `travel`：旅行与照片
 - `game`：游戏与记录
 
-文章卡片里的 `data-category` 要使用这三个值之一，这样首页筛选按钮才能正常工作。
+文章卡片里的 `data-category` 要使用这三个值之一，这样文章才会出现在对应的板块页里。

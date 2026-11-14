@@ -1,19 +1,60 @@
 <!doctype html>
-<html lang="zh-CN" data-theme="light">
+<html lang="zh-CN">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>页面不存在 | 浅梦</title>
-    <link rel="stylesheet" href="styles.css">
+    <meta name="description" content="这个页面暂时不存在。">
+    <meta name="robots" content="noindex">
+    <meta name="theme-color" content="#f7f1e4">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="alternate" type="application/atom+xml" title="浅梦" href="/feed.xml">
+    <script>(function(){try{var t=localStorage.getItem("theme");if(t!=="light"&&t!=="dark"){t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}document.documentElement.dataset.theme=t}catch(e){}})();</script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap"></noscript>
+    <link rel="stylesheet" href="/styles.css">
+    <script src="/script.js" defer></script>
   </head>
   <body>
-    <main class="article-main">
-      <a class="back-link" href="index.html">返回首页</a>
+    <a class="skip-link" href="#main">跳到正文</a>
+    <div class="progress-bar" aria-hidden="true"></div>
+
+    <header class="site-header">
+      <nav class="nav-shell" aria-label="主导航">
+        <a class="brand" href="/" aria-label="浅梦 · 回到首页">
+          <span class="brand-mark">浅梦</span>
+        </a>
+        <div class="nav-actions">
+          <div class="nav-links">
+            <a href="/boards/essay.html">随笔</a>
+            <a href="/boards/travel.html">旅行</a>
+            <a href="/boards/game.html">游戏</a>
+          </div>
+          <button class="theme-toggle" type="button" aria-label="切换深色模式">
+            <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a7 7 0 1 0 10.5 10.5z"/></svg>
+            <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+          </button>
+        </div>
+      </nav>
+    </header>
+
+    <main id="main" class="article-main">
       <header class="article-header">
         <p class="eyebrow">404</p>
         <h1>这个页面暂时不存在。</h1>
-        <p class="article-meta">链接可能已经移动，或者文章还在整理中。</p>
+        <p class="article-meta">链接可能已经移动，或者文章已经被删除。</p>
       </header>
+      <a class="text-link" href="/">回到首页看看别的</a>
     </main>
+
+    <footer class="site-footer">
+      <span>© 2026 浅梦</span>
+      <span class="footer-links">
+        <a href="/feed.xml">RSS 订阅</a>
+        <a href="#top">回到顶部</a>
+      </span>
+    </footer>
   </body>
 </html>

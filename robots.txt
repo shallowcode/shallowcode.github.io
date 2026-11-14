@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /scripts/
+Disallow: /content/
+Disallow: /templates/
+Disallow: /prompts/
+Disallow: /skills/
+Disallow: /docs/
+
+Sitemap: https://shallowcode.github.io/sitemap.xml

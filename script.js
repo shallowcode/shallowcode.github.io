@@ -1,39 +1,68 @@
-const progressBar = document.querySelector(".progress-bar");
-const filterButtons = document.querySelectorAll(".filter-button");
-const postCards = document.querySelectorAll(".post-card");
-const navLinks = document.querySelectorAll(".nav-links a");
-const sections = [...document.querySelectorAll("main section[id]")];
+(() => {
+  const root = document.documentElement;
+  const THEME_KEY = "theme";
+  const THEME_COLORS = { light: "#f7f1e4", dark: "#1b1713" };
+  const systemDark = window.matchMedia("(prefers-color-scheme: dark)");
 
-filterButtons.forEach((button) => {
-  button.addEventListener("click", () => {
-    const filter = button.dataset.filter;
+  const storedTheme = () => {
+    try {
+      const value = localStorage.getItem(THEME_KEY);
+      return value === "light" || value === "dark" ? value : null;
+    } catch {
+      return null;
+    }
+  };
 
-    filterButtons.forEach((item) => item.classList.remove("active"));
-    button.classList.add("active");
+  const toggle = document.querySelector(".theme-toggle");
+  const themeMeta = document.querySelector('meta[name="theme-color"]');
 
-    postCards.forEach((card) => {
-      const shouldShow = filter === "all" || card.dataset.category === filter;
-      card.classList.toggle("is-hidden", !shouldShow);
+  const applyTheme = (theme) => {
+    root.dataset.theme = theme;
+    if (themeMeta) themeMeta.content = THEME_COLORS[theme];
+    if (toggle) {
+      const label = theme === "dark" ? "切换到浅色模式" : "切换到深色模式";
+      toggle.setAttribute("aria-label", label);
+      toggle.title = label;
+    }
+  };
+
+  // 没有手动选择过时跟随系统；手动选择后记住选择。
+  applyTheme(storedTheme() || (systemDark.matches ? "dark" : "light"));
+
+  if (toggle) {
+    toggle.addEventListener("click", () => {
+      const next = root.dataset.theme === "dark" ? "light" : "dark";
+      try {
+        localStorage.setItem(THEME_KEY, next);
+      } catch {
+        /* 隐私模式下无法保存，只在本次访问生效 */
+      }
+      applyTheme(next);
     });
-  });
-});
-
-const updateScrollState = () => {
-  const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-  const progress = maxScroll > 0 ? (window.scrollY / maxScroll) * 100 : 0;
-  if (progressBar) {
-    progressBar.style.width = `${progress}%`;
   }
 
-  const current = sections
-    .filter((section) => section.getBoundingClientRect().top <= 120)
-    .at(-1);
-
-  navLinks.forEach((link) => {
-    const isActive = !!current && link.hash === `#${current.id}`;
-    link.classList.toggle("active", isActive);
+  systemDark.addEventListener("change", (event) => {
+    if (!storedTheme()) applyTheme(event.matches ? "dark" : "light");
   });
-};
 
-updateScrollState();
-window.addEventListener("scroll", updateScrollState, { passive: true });
+  // 顶部阅读进度条
+  const progressBar = document.querySelector(".progress-bar");
+  if (progressBar) {
+    let ticking = false;
+    const update = () => {
+      ticking = false;
+      const maxScroll = root.scrollHeight - window.innerHeight;
+      const progress = maxScroll > 0 ? Math.min(window.scrollY / maxScroll, 1) : 0;
+      progressBar.style.transform = `scaleX(${progress})`;
+    };
+    const requestUpdate = () => {
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(update);
+      }
+    };
+    update();
+    window.addEventListener("scroll", requestUpdate, { passive: true });
+    window.addEventListener("resize", requestUpdate, { passive: true });
+  }
+})();
