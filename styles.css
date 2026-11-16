@@ -1623,3 +1623,52 @@ body {
 /* 页面底部不再有页脚，给最后一块内容留点空 */
 main { padding-bottom: 56px; }
 .article-main, .board-main { padding-bottom: 72px; }
+
+/* =====================================================================
+   首页大图：原创插画（坐在山坡上的女孩），不放文字
+   ===================================================================== */
+
+.home-hero { height: clamp(210px, 32vw, 340px); background: none; }
+.home-hero h1 { display: none; }
+
+.art-sky-top { stop-color: #bcd9ee; }
+.art-sky-mid { stop-color: #fbe3c4; }
+.art-sky-low { stop-color: #fbd2b0; }
+.art-sun { fill: #fff3d6; opacity: 0.95; }
+.art-cloud { fill: #ffffff; opacity: 0.85; }
+.art-birds { stroke: #6b6f86; }
+.art-hill-3 { fill: #b9d1b4; }
+.art-hill-2 { fill: #93b98c; }
+.art-hill-1 { fill: #6d9a66; }
+.art-trees { fill: #54805a; }
+.art-grass { stroke: #4f7d4f; }
+.art-hair-a { stop-color: #6b4a3a; }
+.art-hair-b { stop-color: #3f2a25; }
+.art-skin { fill: #fde3d0; }
+.art-blush { fill: #f6a9a0; opacity: 0.75; }
+.art-eye { stroke: #3f2a25; }
+.art-shirt { fill: #ffffff; }
+.art-collar { fill: #3f5a8a; }
+.art-collar-line { stroke: #ffffff; }
+.art-skirt { fill: #3f5a8a; }
+.art-skirt-fold { stroke: #2f4670; }
+.art-ribbon { fill: #e0604f; }
+.art-cat path { fill: #f4f0ea; stroke: #f4f0ea; }
+
+:root[data-theme="dark"] .home-hero { background: none; }
+:root[data-theme="dark"] .art-sky-top { stop-color: #1c2147; }
+:root[data-theme="dark"] .art-sky-mid { stop-color: #3a3368; }
+:root[data-theme="dark"] .art-sky-low { stop-color: #6a4a7a; }
+:root[data-theme="dark"] .art-sun { fill: #f6efd4; }
+:root[data-theme="dark"] .art-cloud { opacity: 0.12; }
+:root[data-theme="dark"] .art-birds { stroke: transparent; }
+:root[data-theme="dark"] .art-hill-3 { fill: #3d4a63; }
+:root[data-theme="dark"] .art-hill-2 { fill: #2f3b52; }
+:root[data-theme="dark"] .art-hill-1 { fill: #222c40; }
+:root[data-theme="dark"] .art-trees { fill: #1c2536; }
+:root[data-theme="dark"] .art-grass { stroke: #1c2536; }
+:root[data-theme="dark"] .art-hair-a { stop-color: #4a3a4a; }
+:root[data-theme="dark"] .art-hair-b { stop-color: #251c2a; }
+:root[data-theme="dark"] .art-skin { fill: #e9cfc4; }
+:root[data-theme="dark"] .art-shirt { fill: #dfe3ee; }
+:root[data-theme="dark"] .art-cat path { fill: #cfd3de; stroke: #cfd3de; }

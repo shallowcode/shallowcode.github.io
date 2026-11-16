@@ -53,29 +53,63 @@
 
     <main id="main">
       <section class="home-hero">
-        <svg class="home-art" viewBox="0 0 1200 300" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
-          <circle class="art-sun" cx="930" cy="96" r="46"/>
+        <svg class="home-art" viewBox="0 0 1200 300" preserveAspectRatio="xMidYMax slice" role="img" aria-label="坐在山坡上看风景的女孩">
+          <defs>
+            <linearGradient id="art-sky" x1="0" y1="0" x2="0" y2="1">
+              <stop class="art-sky-top" offset="0"/><stop class="art-sky-mid" offset="0.55"/><stop class="art-sky-low" offset="1"/>
+            </linearGradient>
+            <linearGradient id="art-hair" x1="0" y1="0" x2="1" y2="1">
+              <stop class="art-hair-a" offset="0"/><stop class="art-hair-b" offset="1"/>
+            </linearGradient>
+          </defs>
+          <rect width="1200" height="300" fill="url(#art-sky)"/>
+          <circle class="art-sun" cx="640" cy="150" r="92"/>
           <g class="art-cloud">
-            <path d="M210 92a26 26 0 0 1 50-8 20 20 0 0 1 30 18h-92a14 14 0 0 1 12-10z"/>
-            <path d="M700 60a20 20 0 0 1 38-6 16 16 0 0 1 24 14h-72a11 11 0 0 1 10-8z"/>
+            <path d="M150 96a26 26 0 0 1 50-8 20 20 0 0 1 30 18h-92a14 14 0 0 1 12-10z"/>
+            <path d="M930 70a22 22 0 0 1 42-7 17 17 0 0 1 26 15h-80a12 12 0 0 1 12-8z"/>
+            <path d="M360 52a14 14 0 0 1 27-4 11 11 0 0 1 17 10h-52a8 8 0 0 1 8-6z"/>
+          </g>
+          <g class="art-birds" fill="none" stroke-width="2" stroke-linecap="round">
+            <path d="M840 110q8-8 14 0q6-8 14 0"/><path d="M880 92q6-6 10 0q4-6 10 0"/>
           </g>
           <path class="art-hill-3" d="M0 214c120-70 240-92 380-50s250 46 400 4 280-60 420-8v140H0z"/>
           <path class="art-hill-2" d="M0 250c160-56 300-58 450-22s300 30 440-8 220-30 310 0v80H0z"/>
           <g class="art-trees">
-            <path d="M286 222l16-40 16 40zM292 204l10-28 10 28z"/><rect x="300" y="220" width="4" height="12"/>
-            <path d="M336 232l12-30 12 30zM340 218l8-22 8 22z"/><rect x="346" y="230" width="4" height="10"/>
-            <path d="M842 214l14-36 14 36zM847 198l9-25 9 25z"/><rect x="854" y="212" width="4" height="12"/>
+            <path d="M186 232l16-40 16 40zM192 214l10-28 10 28z"/><rect x="200" y="230" width="4" height="12"/>
+            <path d="M236 240l12-30 12 30zM240 226l8-22 8 22z"/><rect x="246" y="238" width="4" height="10"/>
+            <path d="M1002 222l14-36 14 36zM1007 206l9-25 9 25z"/><rect x="1014" y="220" width="4" height="12"/>
           </g>
-          <g class="art-house">
-            <path class="art-roof" d="M560 208l44-34 44 34z"/>
-            <rect class="art-wall" x="570" y="208" width="68" height="40" rx="2"/>
-            <rect class="art-door" x="597" y="224" width="14" height="24" rx="2"/>
-            <rect class="art-window" x="578" y="218" width="12" height="12" rx="2"/>
-            <rect class="art-window" x="618" y="218" width="12" height="12" rx="2"/>
+          <path class="art-hill-1" d="M0 272c200-40 380-36 600-14s400 16 600-10v52H0z"/>
+
+          <!-- 女孩：背对画面坐着，微微侧头，长发被风吹向左边 -->
+          <g class="art-girl">
+            <path class="art-hair-back" fill="url(#art-hair)" d="M612 118c-34-4-52 22-50 54 2 30-8 46-34 60 26 2 44-6 54-20-2 20-14 34-36 44 34 2 62-14 70-44 6-22 4-40 10-58z"/>
+            <path class="art-skirt" d="M560 262c2-26 18-42 46-44 30-2 48 16 52 44z"/>
+            <path class="art-skirt-fold" d="M582 262l8-34M606 262l2-40M632 262l-6-36" fill="none" stroke-width="2" stroke-linecap="round"/>
+            <path class="art-shirt" d="M580 226c-2-24 6-42 28-44s34 14 34 40c-18 6-44 8-62 4z"/>
+            <path class="art-collar" d="M584 192c8-10 40-12 52-2l-4 22c-14-6-30-6-44 0z"/>
+            <path class="art-collar-line" d="M590 206c12-4 26-4 38 0" fill="none" stroke-width="2"/>
+            <path class="art-skin" d="M640 214c8 12 14 26 16 40l-8 2c-4-12-10-22-16-30z"/>
+            <path class="art-skin" d="M600 176h18v12h-18z"/>
+            <circle class="art-skin" cx="612" cy="152" r="27"/>
+            <path class="art-blush" d="M626 160a6 4 0 1 0 12 0a6 4 0 1 0-12 0z"/>
+            <path class="art-eye" d="M624 150q6-6 12 0" fill="none" stroke-width="2.4" stroke-linecap="round"/>
+            <path class="art-hair-front" fill="url(#art-hair)" d="M584 150c-4-26 12-42 34-40 20 2 32 16 26 36-10-8-18-16-22-26-4 14-18 26-38 30z"/>
+            <path class="art-hair-front" fill="url(#art-hair)" d="M610 110c2-12 12-18 22-16-8 4-12 10-12 18z"/>
+            <path class="art-ribbon" d="M586 132l-18-10 2 22zM586 132l-8 20 16-8z"/>
           </g>
-          <path class="art-hill-1" d="M0 276c200-44 380-40 600-16s400 18 600-12v52H0z"/>
+          <!-- 旁边的小猫 -->
+          <g class="art-cat">
+            <path d="M690 262c-2-16 6-26 18-26s20 10 18 26z"/>
+            <path d="M694 240l-2-14 10 8zM722 240l2-14-10 8z"/>
+            <path d="M726 258c12 2 16-8 12-16" fill="none" stroke-width="5" stroke-linecap="round"/>
+          </g>
+          <path class="art-hill-1" d="M500 270c50-12 210-12 270-2v12H500z"/>
+          <g class="art-grass" fill="none" stroke-width="2" stroke-linecap="round">
+            <path d="M520 266l-4-12M528 266l2-10M760 264l-3-11M768 264l3-9M450 270l-3-10M860 266l2-10"/>
+          </g>
         </svg>
-        <h1>浅梦</h1>
+        <h1 class="sr-only">浅梦的个人博客</h1>
       </section>
 
       <nav id="boards" class="home-boards" aria-label="板块">
