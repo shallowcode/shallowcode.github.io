@@ -1527,3 +1527,95 @@ body {
   .home-boards .board-card .board-count { display: none; }
   .home-boards .board-card h3 { font-size: 1.05rem; }
 }
+
+
+/* =====================================================================
+   游戏：文章开头的“省流版”（游戏名 / 平台 / 时长 / 评价 / 优缺点）
+   评价只有三档：buy 建议购买、free 不花钱再玩、skip 不建议游玩
+   ===================================================================== */
+
+[data-verdict="buy"] { --verdict: #2f8a57; }
+[data-verdict="free"] { --verdict: #b7791f; }
+[data-verdict="skip"] { --verdict: #b3402f; }
+:root[data-theme="dark"] [data-verdict="buy"] { --verdict: #7fd19f; }
+:root[data-theme="dark"] [data-verdict="free"] { --verdict: #e8b860; }
+:root[data-theme="dark"] [data-verdict="skip"] { --verdict: #f0907f; }
+
+.review-card {
+  float: none;
+  width: auto;
+  margin: 0 0 2.4em;
+  padding: 24px 26px 26px;
+  border-top: 4px solid var(--terra);
+}
+.review-title {
+  margin: 0 0 14px;
+  color: var(--accent-text);
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+}
+.article-body .review-verdict {
+  display: inline-block;
+  clear: none;
+  margin: 0 0 18px;
+  padding: 6px 18px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--verdict) 14%, transparent);
+  color: var(--verdict);
+  font-family: var(--serif);
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+.review-card .review-facts { display: flex; flex-wrap: wrap; gap: 10px 36px; margin: 0 0 4px; }
+.review-card .review-facts div { display: block; padding: 0; border: 0; }
+.review-card .review-facts dt { color: var(--muted); font-size: 0.8rem; }
+.review-card .review-facts dd { margin: 2px 0 0; text-align: left; font-size: 1.02rem; }
+.review-card .review-points { margin-top: 20px; }
+.review-card .review-pros,
+.review-card .review-cons { padding: 16px 18px; background: var(--bg); box-shadow: none; }
+.review-card h3 { margin: 0 0 8px; font-size: 1rem; }
+.article-body .review-card ul { margin: 0; padding: 0; list-style: none; }
+.article-body .review-card li { position: relative; margin: 0; padding: 4px 0 4px 22px; font-size: 0.97rem; line-height: 1.7; }
+.review-card li::before { position: absolute; left: 2px; font-weight: 700; }
+
+.verdict-badge {
+  position: absolute;
+  top: 16px; right: 16px;
+  z-index: 1;
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--verdict);
+  font-size: 0.82rem;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16), inset 0 0 0 1.5px var(--verdict);
+}
+
+.review-row { grid-template-columns: 96px minmax(0, 1fr) auto; }
+.verdict-box {
+  display: grid;
+  place-items: center;
+  min-height: 64px;
+  padding: 8px 6px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--verdict) 14%, transparent);
+  color: var(--verdict);
+  font-family: var(--serif);
+  font-size: 1.05rem;
+  font-weight: 700;
+  text-align: center;
+}
+.verdict-box.is-empty { background: var(--paper-soft); color: var(--faint); font-weight: 400; }
+
+@media (max-width: 760px) {
+  .review-row { grid-template-columns: 84px minmax(0, 1fr); }
+  .review-card { padding: 20px; }
+}
+
+
+/* 日记：列表里只显示日期和标题，不显示摘要 */
+.post-card[data-category="essay"] { min-height: 0; }
+.post-card[data-category="essay"] p:last-child { display: none; }
+.diary-row h2 { font-size: 1.2rem; }
+[hidden] { display: none !important; }

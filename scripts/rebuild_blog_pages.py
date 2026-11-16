@@ -31,9 +31,9 @@ SITE_DESCRIPTION = "浅梦的个人博客，记录日记、旅行、游戏和生
 FEED_TIMEZONE = "+08:00"
 
 CATEGORIES = {
-    "essay": ("日记", "日记", "Diary", "写给自己的日常：当天的事、当时的心情。"),
+    "essay": ("日记", "日记", "Diary", "日记。"),
     "travel": ("旅行", "旅行", "Travel", "照片、路线和路上的片段。"),
-    "game": ("游戏", "游戏", "Game", "玩过的游戏：评分、优缺点和记住的瞬间。"),
+    "game": ("游戏", "游戏", "Game", "玩过的游戏：值不值得玩、优点和缺点。"),
 }
 
 # Sets the theme before first paint so dark mode never flashes light.
@@ -67,7 +67,7 @@ class PostInfo:
     summary: str
     cover: str = ""   # image path relative to the site root, e.g. assets/uploads/<slug>/a.jpg
     place: str = ""   # travel posts
-    rating: str = ""  # game posts, 0-10
+    verdict: str = ""  # game posts: buy / free / skip
 
     @property
     def filename(self) -> str:
@@ -97,28 +97,26 @@ def weekday_cn(date_attr: str) -> str:
         return ""
 
 
-def clean_rating(value: str) -> str:
-    """Normalise a 0-10 score to at most one decimal; anything else becomes ''."""
-    try:
-        number = float(value)
-    except (TypeError, ValueError):
-        return ""
-    if not 0 <= number <= 10:
-        return ""
-    return f"{number:.1f}".rstrip("0").rstrip(".")
+# Game verdicts: key -> (full wording, short label for badges)
+VERDICTS = {
+    "buy": ("建议购买", "值得买"),
+    "free": ("建议不花钱时再玩", "免费再玩"),
+    "skip": ("不建议游玩", "不推荐"),
+}
 
 
-def rating_label(rating: str) -> str:
-    number = float(rating)
-    for threshold, label in ((9.5, "神作"), (8.5, "力荐"), (7.5, "优秀"), (6.5, "不错"), (5.5, "一般"), (4, "失望")):
-        if number >= threshold:
-            return label
-    return "劝退"
+def clean_verdict(value: str) -> str:
+    """Accept the key (buy / free / skip) or either of its Chinese labels."""
+    value = (value or "").strip().lower()
+    for key, labels in VERDICTS.items():
+        if value == key or value in labels:
+            return key
+    return ""
 
 
 def card_attrs(post: "PostInfo") -> str:
     attrs = f' data-category="{esc(post.category, True)}"'
-    for name in ("cover", "place", "rating"):
+    for name in ("cover", "place", "verdict"):
         value = getattr(post, name)
         if value:
             attrs += f' data-{name}="{esc(value, True)}"'
@@ -132,9 +130,9 @@ def card_meta(post: "PostInfo") -> str:
 
 
 def score_badge(post: "PostInfo", indent: str) -> str:
-    if not post.rating:
+    if post.verdict not in VERDICTS:
         return ""
-    return f'{indent}<span class="score-badge" aria-label="评分 {post.rating}，满分 10">{post.rating}</span>\n'
+    return f'{indent}<span class="verdict-badge" data-verdict="{post.verdict}">{VERDICTS[post.verdict][1]}</span>\n'
 
 
 def category_names(category: str) -> tuple[str, str, str, str]:
@@ -176,7 +174,7 @@ def parse_posts(content: str | None = None) -> list[PostInfo]:
             summary=strip_tags(paragraphs[-1]) if paragraphs else "",
             **{
                 name: html.unescape(value)
-                for name, value in re.findall(r'data-(cover|place|rating)="([^"]*)"', match.group("attrs"))
+                for name, value in re.findall(r'data-(cover|place|verdict)="([^"]*)"', match.group("attrs"))
             },
         ))
     # Newest first. The sort is stable, so same-day posts keep their order in index.html.
@@ -391,9 +389,9 @@ def board_card(post: PostInfo) -> str:
         )
     if post.category == "game":
         score = (
-            f'          <div class="score-box"><strong>{post.rating}</strong><span>{rating_label(post.rating)}</span></div>\n'
-            if post.rating
-            else '          <div class="score-box is-empty"><strong>–</strong><span>未评分</span></div>\n'
+            f'          <div class="verdict-box" data-verdict="{post.verdict}">{VERDICTS[post.verdict][1]}</div>\n'
+            if post.verdict in VERDICTS
+            else '          <div class="verdict-box is-empty">未评价</div>\n'
         )
         return (
             f'        <article class="board-post-card review-row"{attrs}>\n'
@@ -412,7 +410,6 @@ def board_card(post: PostInfo) -> str:
         f'          <time class="diary-date" datetime="{post.date_attr}"><strong>{day}</strong><span>{year}.{month}</span><span>{weekday_cn(post.date_attr)}</span></time>\n'
         '          <div class="diary-row-text">\n'
         f"            <h2>{link}</h2>\n"
-        f"            <p>{esc(post.summary)}</p>\n"
         "          </div>\n"
         "        </article>"
     )

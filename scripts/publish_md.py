@@ -42,7 +42,7 @@ class Post:
     album_class: str
     body_html: str
     place: str = ""
-    rating: str = ""
+    verdict: str = ""
 
 
 def fail(message: str) -> None:
@@ -386,20 +386,21 @@ def split_points(value: str) -> list[str]:
     return [item.strip() for item in re.split(r"[|｜;；\n]", value) if item.strip()]
 
 
-def review_card(meta: dict[str, str], rating: str) -> str:
-    """The info box at the top of a game post: score plus a few facts."""
+def review_card(meta: dict[str, str], verdict: str) -> str:
+    """The "省流版" box that opens a game post: name, platform, hours, verdict, pros and cons."""
     facts = [
         (label, meta.get(key, "").strip())
-        for key, label in (("game", "游戏"), ("platform", "平台"), ("hours", "游玩时长"), ("status", "进度"))
+        for key, label in (("game", "游戏"), ("platform", "平台"), ("hours", "游玩时长"))
     ]
     facts = [(label, value) for label, value in facts if value]
-    if not rating and not facts:
+    pros = split_points(meta.get("pros", ""))
+    cons = split_points(meta.get("cons", ""))
+    if not verdict and not facts and not pros and not cons:
         return ""
-    lines = ['        <aside class="review-card" aria-label="游戏信息">']
-    if rating:
+    lines = ['        <aside class="review-card" aria-label="省流版">', '          <p class="review-title">省流版</p>']
+    if verdict:
         lines.append(
-            f'          <div class="review-score" style="--score: {float(rating) * 10:.0f}">'
-            f"<strong>{rating}</strong><span>/ 10</span><em>{rebuild_blog_pages.rating_label(rating)}</em></div>"
+            f'          <p class="review-verdict" data-verdict="{verdict}">{rebuild_blog_pages.VERDICTS[verdict][0]}</p>'
         )
     if facts:
         lines.append('          <dl class="review-facts">')
@@ -407,18 +408,6 @@ def review_card(meta: dict[str, str], rating: str) -> str:
             f"            <div><dt>{label}</dt><dd>{html.escape(value, quote=False)}</dd></div>" for label, value in facts
         )
         lines.append("          </dl>")
-    lines.append("        </aside>")
-    return "\n".join(lines)
-
-
-def review_verdict(meta: dict[str, str]) -> str:
-    """Pros, cons and a one-line verdict at the end of a game post."""
-    pros = split_points(meta.get("pros", ""))
-    cons = split_points(meta.get("cons", ""))
-    verdict = meta.get("verdict", "").strip()
-    if not pros and not cons and not verdict:
-        return ""
-    lines = ['        <section class="review-verdict" aria-label="总评">']
     if pros or cons:
         lines.append('          <div class="review-points">')
         for css_class, heading, items in (("review-pros", "优点", pros), ("review-cons", "缺点", cons)):
@@ -431,9 +420,7 @@ def review_verdict(meta: dict[str, str]) -> str:
             lines.append("              </ul>")
             lines.append("            </div>")
         lines.append("          </div>")
-    if verdict:
-        lines.append(f'          <p class="review-summary"><strong>一句话总结</strong>{html.escape(verdict, quote=False)}</p>')
-    lines.append("        </section>")
+    lines.append("        </aside>")
     return "\n".join(lines)
 
 
@@ -478,12 +465,10 @@ def build_post(path: Path, copy_images: bool = True) -> Post:
     if cover:
         cover_src = copy_image_if_local(cover, path, slug, copy_images)
 
-    rating = rebuild_blog_pages.clean_rating(meta.get("rating", "")) if category == "game" else ""
+    verdict = rebuild_blog_pages.clean_verdict(meta.get("verdict", "")) if category == "game" else ""
     place = meta.get("place", "").strip() if category == "travel" else ""
     if category == "game":
-        blocks = [review_card(meta, rating), body_html, review_verdict(meta)]
-    elif category == "essay":
-        blocks = [diary_tags(meta), body_html]
+        blocks = [review_card(meta, verdict), body_html]
     else:
         blocks = [body_html]
     body_html = "\n\n".join(block for block in blocks if block)
@@ -503,7 +488,7 @@ def build_post(path: Path, copy_images: bool = True) -> Post:
         album_class=album_class,
         body_html=body_html,
         place=place,
-        rating=rating,
+        verdict=verdict,
     )
 
 
@@ -517,7 +502,7 @@ def post_info(post: Post) -> rebuild_blog_pages.PostInfo:
         summary=post.summary,
         cover=index_src(post.cover_src) if post.cover_src.startswith("../") else "",
         place=post.place,
-        rating=post.rating,
+        verdict=post.verdict,
     )
 
 

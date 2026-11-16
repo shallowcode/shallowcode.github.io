@@ -24,30 +24,25 @@
   const CATEGORIES = { essay: "日记", travel: "旅行", game: "游戏" };
   // 每个板块自己的字段：[front matter 里的名字, 显示的名字, 输入提示, 是否占一整行]
   const EXTRA_FIELDS = {
-    essay: [
-      ["weather", "天气", "晴 / 小雨 / 大风…"],
-      ["mood", "心情", "平静 / 开心 / 有点累…"],
-    ],
+    essay: [], // 日记只要标题、日期和正文
     travel: [["place", "地点", "云南 · 大理", true]],
     game: [
       ["game", "游戏名", "空洞骑士 Hollow Knight"],
       ["platform", "平台", "PC / Switch / PS5"],
       ["hours", "游玩时长", "30 小时"],
-      ["status", "进度", "已通关 / 游玩中 / 弃坑"],
-      ["rating", "评分（0–10，可以带一位小数）", "8.5"],
-      ["verdict", "一句话总结", "值不值得玩，一句话说清楚"],
+      ["verdict", "评价", { "": "（不填）", buy: "建议购买", free: "建议不花钱时再玩", skip: "不建议游玩" }],
       ["pros", "优点（多条用 | 隔开）", "手感好 | 音乐出色", true],
       ["cons", "缺点（多条用 | 隔开）", "前期慢热 | 重复度高", true],
     ],
   };
-  const EXTRA_KEYS = ["cover", ...new Set(Object.values(EXTRA_FIELDS).flat().map(([key]) => key))];
+  // status / rating 是旧版游戏字段，保存时会顺手清掉
+  const EXTRA_KEYS = ["cover", "status", "rating", "weather", "mood", ...new Set(Object.values(EXTRA_FIELDS).flat().map(([key]) => key))];
   const CATEGORY_HINTS = {
-    essay: "日记：页面是窄栏的衬线排版，会显示星期、天气和心情。",
     travel: "旅行：封面图会变成页面顶部的大图；正文里连续放几张照片会自动排成照片墙，点击可以放大。",
-    game: "游戏：评分、平台等会显示成页面右侧的信息卡，优点、缺点和一句话总结显示在文章末尾。",
+    game: "游戏：游戏名、平台、时长、评价和优缺点会排成文章开头的“省流版”，正文接在后面。",
   };
   const BODY_TEMPLATES = {
-    essay: "今天……\n\n## 发生了什么\n\n\n\n## 想记住的\n\n> ",
+    essay: "",
     travel:
       "先用一两句话说说这趟旅行。\n\n## 行程\n\n- 第一天：\n- 第二天：\n\n## 路上\n\n（在这里连续插入几张照片，会自动排成照片墙）\n\n## 吃了什么\n\n\n\n## 小贴士\n\n- 交通：\n- 住宿：\n- 花费：",
     game: "先用一两句话说说为什么想写它。\n\n## 玩法\n\n\n\n## 剧情与氛围\n\n\n\n## 画面与音乐\n\n\n\n## 让我记住的瞬间\n\n\n\n## 适合谁玩\n\n",
@@ -1128,13 +1123,21 @@
     };
     for (const control of [title, date, category, summary, body]) control.addEventListener("input", onChange);
 
+    const summaryField = h("label", { class: "field", for: "post-summary" }, h("span", {}, "摘要（显示在首页卡片上）"), summary);
     // 板块专属的字段和封面图；切换板块时重新画一遍，填过的内容会保留。
     const extraBox = h("div", { class: "extra-fields" });
     const coverInput = h("input", { type: "file", accept: "image/*", class: "sr-only", tabindex: "-1" });
     const renderExtra = () => {
       const kind = category.value;
       const inputs = EXTRA_FIELDS[kind].map(([key, label, placeholder, wide]) => {
-        const input = h("input", { type: "text", id: `extra-${key}`, value: extra[key] || "", placeholder, maxlength: 200 });
+        const input =
+          typeof placeholder === "object"
+            ? h(
+                "select",
+                { id: `extra-${key}` },
+                Object.entries(placeholder).map(([value, text]) => h("option", { value, selected: value === (extra[key] || "") }, text)),
+              )
+            : h("input", { type: "text", id: `extra-${key}`, value: extra[key] || "", placeholder, maxlength: 200 });
         input.addEventListener("input", () => {
           extra[key] = input.value;
           onChange();
@@ -1162,6 +1165,11 @@
             ),
           )
         : h("div", { class: "cover-picker" }, h("button", { class: "btn btn-small", type: "button", onclick: () => coverInput.click() }, "选择封面图"));
+      // 日记：不要摘要、封面和其他字段
+      const simple = kind === "essay";
+      summaryField.hidden = simple;
+      extraBox.hidden = simple;
+      if (simple) return;
       extraBox.replaceChildren(
         h("p", { class: "muted field-wide" }, CATEGORY_HINTS[kind]),
         ...inputs,
@@ -1229,13 +1237,9 @@
         return;
       }
       const kind = values.category;
-      const rating = oneLine(extra.rating);
-      if (kind === "game" && rating && !(Number(rating) >= 0 && Number(rating) <= 10)) {
-        notify("评分要填 0 到 10 之间的数字，比如 8.5。", "error");
-        return;
-      }
       // 只保存当前板块用得上的字段，其他板块的清空
-      const relevant = new Set(["cover", ...EXTRA_FIELDS[kind].map(([key]) => key)]);
+      const relevant = new Set([...(kind === "essay" ? [] : ["cover"]), ...EXTRA_FIELDS[kind].map(([key]) => key)]);
+      if (kind === "essay") values.summary = "";
       const extraValues = Object.fromEntries(EXTRA_KEYS.map((key) => [key, relevant.has(key) ? oneLine(extra[key]) : ""]));
       const missing = missingImages();
       if (extraValues.cover && /^assets\//.test(extraValues.cover) && !pendingImages.has(extraValues.cover) && !findEntry(extraValues.cover)) {
@@ -1313,7 +1317,7 @@
           h("label", { class: "field", for: "post-date" }, h("span", {}, "日期"), date),
           h("label", { class: "field", for: "post-category" }, h("span", {}, "板块"), category),
         ),
-        h("label", { class: "field", for: "post-summary" }, h("span", {}, "摘要（显示在首页卡片上）"), summary),
+        summaryField,
         extraBox,
         coverInput,
         h(
@@ -1329,6 +1333,10 @@
                 class: "btn btn-small",
                 type: "button",
                 onclick: () => {
+                  if (!BODY_TEMPLATES[category.value]) {
+                    notify("日记没有模板，直接写就好。");
+                    return;
+                  }
                   if (body.value.trim() && !window.confirm("正文里已经有内容了，要把模板加在光标位置吗？")) return;
                   insertAtCursor(BODY_TEMPLATES[category.value]);
                 },
