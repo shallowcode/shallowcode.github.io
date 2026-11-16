@@ -357,3 +357,109 @@
   .editor-text { min-height: 52vh; }
   .editor-preview { min-height: 52vh; }
 }
+
+
+/* ---------- 所见即所得编辑器 ---------- */
+
+.editor-area { display: grid; gap: 10px; }
+
+.rich-tools {
+  position: sticky;
+  top: 74px;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  box-shadow: var(--shadow-soft);
+}
+.tool {
+  min-height: 34px;
+  padding: 4px 11px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.tool:hover { background: var(--paper-soft); color: var(--accent-text); }
+.tool-bold { font-weight: 700; }
+.tool-image { margin-left: auto; color: var(--accent-text); font-weight: 500; }
+
+.rich-editor {
+  max-width: none;
+  min-height: 420px;
+  padding: 22px 26px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  cursor: text;
+}
+.rich-editor:focus { outline: 2px solid var(--terra); outline-offset: 1px; border-color: transparent; }
+.rich-editor:empty::before { content: attr(data-placeholder); color: var(--faint); }
+.rich-editor > :first-child { margin-top: 0; }
+.rich-editor ul.task-list { padding-left: 0; list-style: none; }
+.rich-editor ul.task-list > li { position: relative; display: block; padding-left: 30px; text-decoration: none; }
+.rich-editor ul.task-list > li::before {
+  content: "";
+  position: absolute;
+  top: 0.48em; left: 2px;
+  width: 17px; height: 17px;
+  border: 1.5px solid var(--faint);
+  border-radius: 4px;
+  background: var(--paper);
+  cursor: pointer;
+}
+.rich-editor ul.task-list > li.is-done { color: var(--muted); }
+.rich-editor ul.task-list > li.is-done::before {
+  border-color: var(--terra);
+  background: var(--terra) center / 12px no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6.2l2.6 2.6L10 3.4' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+/* 图片：编辑时并排显示成小图，方便拖动换位置 */
+.rich-editor figure.article-photo {
+  position: relative;
+  display: inline-block;
+  width: calc(33.333% - 8px);
+  margin: 4px;
+  vertical-align: top;
+  cursor: grab;
+  user-select: none;
+}
+.rich-editor figure.article-photo img { aspect-ratio: 4 / 3; max-height: none; object-fit: cover; cursor: grab; pointer-events: none; }
+.rich-editor figure.article-photo.is-dragging { opacity: 0.4; }
+.rich-editor figcaption { min-height: 2.2em; cursor: text; user-select: text; }
+.rich-editor figcaption:empty::before { content: attr(data-placeholder); color: var(--faint); }
+.rich-editor .drop-before { box-shadow: -4px 0 0 var(--terra); }
+.rich-editor .drop-after { box-shadow: 4px 0 0 var(--terra); }
+.rich-editor > :not(figure).drop-before { box-shadow: 0 -3px 0 var(--terra); }
+.rich-editor > :not(figure).drop-after { box-shadow: 0 3px 0 var(--terra); }
+
+.figure-tools { position: absolute; top: 6px; right: 6px; display: flex; gap: 4px; opacity: 0; transition: opacity 140ms ease; }
+.rich-editor figure:hover .figure-tools,
+.rich-editor figure:focus-within .figure-tools { opacity: 1; }
+.figure-tools button {
+  display: grid;
+  width: 28px; height: 28px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(20, 16, 12, 0.72);
+  color: #fff;
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.figure-tools button:hover { background: rgba(20, 16, 12, 0.92); }
+
+@media (hover: none) { .figure-tools { opacity: 1; } }
+@media (max-width: 560px) {
+  .rich-tools { top: 66px; }
+  .rich-editor { padding: 16px; min-height: 50vh; }
+  .rich-editor figure.article-photo { width: calc(50% - 8px); }
+}

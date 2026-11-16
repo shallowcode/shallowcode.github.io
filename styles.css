@@ -1619,3 +1619,7 @@ body {
 .post-card[data-category="essay"] p:last-child { display: none; }
 .diary-row h2 { font-size: 1.2rem; }
 [hidden] { display: none !important; }
+
+/* 页面底部不再有页脚，给最后一块内容留点空 */
+main { padding-bottom: 56px; }
+.article-main, .board-main { padding-bottom: 72px; }

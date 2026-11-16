@@ -243,13 +243,8 @@ def site_header(prefix: str, current: str = "") -> str:
 
 
 def site_footer(prefix: str) -> str:
-    return f"""    <footer class="site-footer">
-      <span>© {date.today().year} {SITE_NAME}</span>
-      <span class="footer-links">
-        <a href="{prefix}feed.xml">RSS 订阅</a>
-        <a href="#top">回到顶部</a>
-      </span>
-    </footer>"""
+    """Pages end without a footer (no copyright line, RSS link or back-to-top)."""
+    return ""
 
 
 def page_shell(

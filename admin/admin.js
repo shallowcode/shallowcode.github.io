@@ -44,7 +44,7 @@
   const BODY_TEMPLATES = {
     essay: "",
     travel:
-      "先用一两句话说说这趟旅行。\n\n## 行程\n\n- 第一天：\n- 第二天：\n\n## 路上\n\n（在这里连续插入几张照片，会自动排成照片墙）\n\n## 吃了什么\n\n\n\n## 小贴士\n\n- 交通：\n- 住宿：\n- 花费：",
+      "先用一两句话说说这趟旅行。\n\n## 行程\n\n- 第一天：\n- 第二天：\n\n## 路上\n\n（把照片拖到这里，连着放的几张会自动排成照片墙）\n\n## 吃了什么\n\n\n\n## 小贴士\n\n- 交通：\n- 住宿：\n- 花费：",
     game: "先用一两句话说说为什么想写它。\n\n## 玩法\n\n\n\n## 剧情与氛围\n\n\n\n## 画面与音乐\n\n\n\n## 让我记住的瞬间\n\n\n\n## 适合谁玩\n\n",
   };
   const TEXT_EXTENSIONS = /\.(md|markdown|txt|html?|css|js|mjs|json|xml|svg|ya?ml|py|bat|sh|toml|ini|csv|gitignore|nojekyll|gitkeep)$/i;
@@ -1077,7 +1077,15 @@
     );
     const summary = h("input", { type: "text", id: "post-summary", value: initial.summary, placeholder: "留空会自动取正文第一段", maxlength: 120 });
     const body = h("textarea", { id: "post-body", class: "editor-text", value: initial.body, spellcheck: "false", placeholder: "用 Markdown 写正文…\n\n## 小标题\n\n- [ ] 任务列表\n> 引用" });
-    const preview = h("div", { class: "article-body editor-preview", "aria-label": "预览" });
+    // 所见即所得的正文编辑区。保存的仍然是 Markdown：每次改动都会把这里的内容转成 Markdown 写回 body。
+    const preview = h("div", {
+      class: "article-body rich-editor",
+      contenteditable: "true",
+      role: "textbox",
+      "aria-multiline": "true",
+      "aria-label": "正文",
+      "data-placeholder": "在这里写正文。图片可以直接拖进来或粘贴。",
+    });
     const fileInput = h("input", { type: "file", accept: "image/*", multiple: true, class: "sr-only", tabindex: "-1" });
 
     const resolveSrc = (src) => {
@@ -1088,24 +1096,341 @@
       return repoPath.startsWith("assets/") ? `../${repoPath}` : src;
     };
 
-    let previewTimer = 0;
-    const updatePreview = () => {
-      clearTimeout(previewTimer);
-      previewTimer = setTimeout(() => {
-        preview.innerHTML = renderMarkdown(body.value, resolveSrc) || '<p class="empty-note">这里会显示预览。</p>';
-        // 刚提交的图片要等部署完才能从网站读到，先退回到仓库里的原始文件。
-        preview.querySelectorAll("img[data-src]").forEach((image) => {
-          image.addEventListener(
-            "error",
-            () => {
-              const repoPath = image.dataset.src.replace(/^(\.\.\/)+/, "");
-              if (findEntry(repoPath)) image.src = `${RAW_URL}/${encodeURI(repoPath)}`;
-            },
-            { once: true },
-          );
-        });
-      }, 150);
+    let mode = "rich";
+
+    const figureButton = (label, title, action) =>
+      h("button", { type: "button", title, "aria-label": title, contenteditable: "false", onclick: action }, label);
+
+    const setupFigure = (figure) => {
+      figure.contentEditable = "false";
+      figure.draggable = true;
+      let caption = figure.querySelector("figcaption");
+      if (!caption) {
+        caption = h("figcaption");
+        figure.append(caption);
+      }
+      caption.contentEditable = "true";
+      caption.dataset.placeholder = "添加说明（可不填）";
+      if (!figure.querySelector(".figure-tools")) {
+        figure.append(
+          h(
+            "span",
+            { class: "figure-tools", contenteditable: "false" },
+            figureButton("←", "往前移", () => {
+              if (figure.previousElementSibling) figure.previousElementSibling.before(figure);
+              syncFromRich();
+            }),
+            figureButton("→", "往后移", () => {
+              if (figure.nextElementSibling) figure.nextElementSibling.after(figure);
+              syncFromRich();
+            }),
+            figureButton("×", "删除这张图", () => {
+              figure.remove();
+              syncFromRich();
+            }),
+          ),
+        );
+      }
     };
+
+    const makeFigure = (repoPath, caption = "") => {
+      const figure = h(
+        "figure",
+        { class: "article-photo" },
+        h("img", { src: resolveSrc(repoPath), "data-src": repoPath, alt: caption }),
+        h("figcaption", {}, caption),
+      );
+      setupFigure(figure);
+      return figure;
+    };
+
+    const normalizeRich = () => {
+      // 待办的勾选框是用 CSS 画的（编辑区里放真的 <input> 会让回车换行出问题）
+      preview.querySelectorAll("ul.task-list > li").forEach((item) => {
+        item.classList.add("task-item");
+        // 回车新起的一行会带上“已完成”，空行时去掉
+        if (!item.textContent.trim()) item.classList.remove("is-done");
+      });
+      preview.querySelectorAll("ul:not(.task-list) > li.task-item").forEach((item) => item.classList.remove("task-item", "is-done"));
+    };
+
+    const loadRich = () => {
+      preview.innerHTML = renderMarkdown(body.value, resolveSrc);
+      // 照片墙在编辑时拆成一张张图，方便拖动；发布时连续的图会重新排成照片墙。
+      preview.querySelectorAll(".photo-grid").forEach((grid) => grid.replaceWith(...grid.childNodes));
+      preview.querySelectorAll("figure.article-photo").forEach(setupFigure);
+      preview.querySelectorAll("li.task-item").forEach((item) => {
+        const text = item.querySelector("span");
+        item.innerHTML = text ? text.innerHTML : "";
+      });
+      preview.querySelectorAll("a").forEach((link) => link.removeAttribute("target"));
+      // 刚提交的图片要等部署完才能从网站读到，先退回到仓库里的原始文件。
+      preview.querySelectorAll("img[data-src]").forEach((image) => {
+        image.addEventListener(
+          "error",
+          () => {
+            const repoPath = image.dataset.src.replace(/^(\.\.\/)+/, "");
+            if (findEntry(repoPath)) image.src = `${RAW_URL}/${encodeURI(repoPath)}`;
+          },
+          { once: true },
+        );
+      });
+    };
+
+    /* 编辑区 DOM -> Markdown（只用 scripts/publish_md.py 认识的那部分语法） */
+    const inlineMarkdown = (node) => {
+      let out = "";
+      node.childNodes.forEach((child) => {
+        if (child.nodeType === Node.TEXT_NODE) {
+          out += child.nodeValue.replace(/ /g, " ");
+          return;
+        }
+        if (child.nodeType !== Node.ELEMENT_NODE) return;
+        const tag = child.tagName;
+        if (tag === "BR") out += "\n";
+        else if (tag === "INPUT" || child.classList.contains("figure-tools")) out += "";
+        else if (tag === "IMG") out += `![${child.alt || ""}](${child.dataset.src || child.getAttribute("src")})`;
+        else if (tag === "CODE") out += "`" + child.textContent + "`";
+        else {
+          const inner = inlineMarkdown(child);
+          const text = inner.trim();
+          if (!text) out += inner;
+          else if (tag === "B" || tag === "STRONG") out += `**${text}**`;
+          else if (tag === "I" || tag === "EM") out += `*${text}*`;
+          else if (tag === "A" && child.getAttribute("href")) out += `[${text}](${child.getAttribute("href")})`;
+          else if (/^(P|DIV|LI)$/.test(tag)) out += `${inner}\n`;
+          else out += inner;
+        }
+      });
+      return out;
+    };
+    const textLines = (text) => text.split(/\n+/).map((line) => line.trim()).filter(Boolean);
+    const BLOCK_TAGS = /^(P|DIV|H[1-6]|UL|OL|BLOCKQUOTE|FIGURE|HR|PRE)$/;
+
+    const toMarkdown = (root) => {
+      const blocks = [];
+      const walk = (parent) => {
+        parent.childNodes.forEach((node) => {
+          if (node.nodeType === Node.TEXT_NODE) {
+            blocks.push(...textLines(node.nodeValue));
+            return;
+          }
+          if (node.nodeType !== Node.ELEMENT_NODE) return;
+          const tag = node.tagName;
+          if (tag === "FIGURE") {
+            const image = node.querySelector("img");
+            const caption = node.querySelector("figcaption");
+            if (image) blocks.push(`![${oneLine(caption ? caption.textContent : "")}](${image.dataset.src || image.getAttribute("src")})`);
+          } else if (tag === "HR") blocks.push("---");
+          else if (tag === "PRE") blocks.push("```\n" + node.textContent.replace(/\n$/, "") + "\n```");
+          else if (/^H[12]$/.test(tag)) textLines(inlineMarkdown(node)).forEach((line) => blocks.push(`# ${line}`));
+          else if (/^H[3-6]$/.test(tag)) textLines(inlineMarkdown(node)).forEach((line) => blocks.push(`## ${line}`));
+          else if (tag === "BLOCKQUOTE") {
+            const lines = textLines(inlineMarkdown(node));
+            if (lines.length) blocks.push(lines.map((line) => `> ${line}`).join("\n"));
+          } else if (tag === "UL" || tag === "OL") {
+            const items = [...node.children]
+              .filter((item) => item.tagName === "LI")
+              .map((item, index) => {
+                const text = oneLine(inlineMarkdown(item));
+                if (!text) return "";
+                if (tag === "OL") return `${index + 1}. ${text}`;
+                if (!node.classList.contains("task-list")) return `- ${text}`;
+                return `- [${item.classList.contains("is-done") ? "x" : " "}] ${text}`;
+              })
+              .filter(Boolean);
+            if (items.length) blocks.push(items.join("\n"));
+          } else if ([...node.children].some((child) => BLOCK_TAGS.test(child.tagName))) walk(node);
+          else blocks.push(...textLines(inlineMarkdown(node)));
+        });
+      };
+      walk(root);
+      return blocks.join("\n\n");
+    };
+
+    const syncFromRich = () => {
+      normalizeRich();
+      body.value = toMarkdown(preview);
+      onChange();
+    };
+    preview.addEventListener("input", syncFromRich);
+    // 点待办左边的小方框来勾选 / 取消
+    preview.addEventListener("click", (event) => {
+      const item = event.target.closest ? event.target.closest("ul.task-list > li") : null;
+      if (!item || event.clientX - item.getBoundingClientRect().left > 26) return;
+      item.classList.toggle("is-done");
+      syncFromRich();
+    });
+
+    // 把节点放到光标所在段落的后面；光标不在编辑区时放到最后
+    const insertBlocks = (nodes, reference) => {
+      if (reference === undefined) {
+        const selection = window.getSelection();
+        let node = selection.rangeCount && preview.contains(selection.anchorNode) ? selection.anchorNode : null;
+        while (node && node.parentNode !== preview) node = node.parentNode;
+        reference = node ? node.nextSibling : null;
+      }
+      nodes.forEach((node) => preview.insertBefore(node, reference));
+      if (!preview.lastElementChild || preview.lastElementChild.tagName === "FIGURE") preview.append(h("p", {}, h("br")));
+      syncFromRich();
+    };
+
+    const addImageFiles = async (files, reference) => {
+      const figures = [];
+      for (const file of files) {
+        if (!/^image\//.test(file.type)) continue;
+        const image = await prepareImage(file);
+        const name = `${Date.now().toString(36)}-${safeFileName(file.name)}.${image.extension}`;
+        const repoPath = `${CONFIG.uploads}/${slug}/${name}`;
+        const type = image.extension === "jpg" ? "image/jpeg" : file.type;
+        pendingImages.set(repoPath, { bytes: image.bytes, url: URL.createObjectURL(new Blob([image.bytes], { type })) });
+        figures.push(makeFigure(repoPath));
+      }
+      if (!figures.length) return;
+      if (mode === "rich") insertBlocks(figures, reference);
+      else {
+        body.value = `${body.value.trim()}\n\n${figures.map((figure) => `![](${figure.querySelector("img").dataset.src})`).join("\n\n")}\n`;
+        onChange();
+      }
+    };
+
+    // 拖动：从电脑里拖图片进来，或者拖动已有的图片换位置
+    let draggedFigure = null;
+    let dropMark = null;
+    const clearDropMark = () => {
+      if (dropMark) dropMark.classList.remove("drop-before", "drop-after");
+      dropMark = null;
+    };
+    const dropPosition = (event) => {
+      let target = document.elementFromPoint(event.clientX, event.clientY);
+      while (target && target !== preview && target.parentNode !== preview) target = target.parentNode;
+      if (!target || target === preview) return { target: null, reference: null, before: false };
+      const box = target.getBoundingClientRect();
+      const before =
+        target.tagName === "FIGURE" ? event.clientX < box.left + box.width / 2 : event.clientY < box.top + box.height / 2;
+      return { target, before, reference: before ? target : target.nextSibling };
+    };
+    const hasFiles = (event) => [...(event.dataTransfer ? event.dataTransfer.types : [])].includes("Files");
+    preview.addEventListener("dragstart", (event) => {
+      const figure = event.target.closest ? event.target.closest("figure.article-photo") : null;
+      if (!figure) return;
+      draggedFigure = figure;
+      figure.classList.add("is-dragging");
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", "");
+    });
+    preview.addEventListener("dragend", () => {
+      if (draggedFigure) draggedFigure.classList.remove("is-dragging");
+      draggedFigure = null;
+      clearDropMark();
+    });
+    preview.addEventListener("dragover", (event) => {
+      if (!draggedFigure && !hasFiles(event)) return;
+      event.preventDefault();
+      const { target, before } = dropPosition(event);
+      clearDropMark();
+      if (target && target !== draggedFigure) {
+        dropMark = target;
+        target.classList.add(before ? "drop-before" : "drop-after");
+      }
+    });
+    preview.addEventListener("dragleave", (event) => {
+      if (!preview.contains(event.relatedTarget)) clearDropMark();
+    });
+    preview.addEventListener("drop", (event) => {
+      if (!draggedFigure && !hasFiles(event)) return;
+      event.preventDefault();
+      const { reference } = dropPosition(event);
+      clearDropMark();
+      if (draggedFigure) {
+        if (reference !== draggedFigure) preview.insertBefore(draggedFigure, reference);
+        syncFromRich();
+      } else addImageFiles([...event.dataTransfer.files], reference);
+    });
+    preview.addEventListener("paste", (event) => {
+      const files = [...(event.clipboardData ? event.clipboardData.files : [])].filter((file) => /^image\//.test(file.type));
+      event.preventDefault();
+      if (files.length) addImageFiles(files);
+      // 文字一律按纯文本粘贴，避免把别处的字体、颜色带进来
+      else document.execCommand("insertText", false, event.clipboardData.getData("text/plain"));
+    });
+
+    // 工具栏
+    const currentBlock = () => {
+      const selection = window.getSelection();
+      let node = selection.rangeCount && preview.contains(selection.anchorNode) ? selection.anchorNode : null;
+      return node && node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
+    };
+    const command = (name, value) => {
+      preview.focus();
+      document.execCommand(name, false, value);
+      syncFromRich();
+    };
+    const toggleBlock = (tag) => {
+      const block = currentBlock();
+      command("formatBlock", block && block.closest(tag) ? "p" : tag);
+    };
+    // 浏览器把列表建在 <p> 里面，光标还会跳到行首；这里把列表提出来，光标放回行尾
+    const tidyList = () => {
+      const block = currentBlock();
+      const item = block && block.closest("li");
+      const list = item && item.closest("ul, ol");
+      if (!list) return null;
+      const wrapper = list.parentElement;
+      if (wrapper !== preview && /^(P|DIV)$/.test(wrapper.tagName) && wrapper.children.length === 1) wrapper.replaceWith(list);
+      const range = document.createRange();
+      range.selectNodeContents(item);
+      range.collapse(false);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      return list;
+    };
+    const toggleList = (name) => {
+      preview.focus();
+      document.execCommand(name);
+      const list = tidyList();
+      if (list) list.classList.remove("task-list");
+      syncFromRich();
+    };
+    const toggleTasks = () => {
+      preview.focus();
+      const block = currentBlock();
+      if (!block || !block.closest("ul")) document.execCommand("insertUnorderedList");
+      const list = tidyList();
+      if (list && list.tagName === "UL") list.classList.toggle("task-list");
+      syncFromRich();
+    };
+    const addLink = () => {
+      const url = window.prompt("链接地址：", "https://");
+      if (url && /^https?:\/\//.test(url)) command("createLink", url);
+    };
+    const tool = (label, title, action, extraClass = "") =>
+      h(
+        "button",
+        // mousedown 时不让按钮抢走焦点，否则选中的文字会丢
+        { class: `tool ${extraClass}`.trim(), type: "button", title, "aria-label": title, onmousedown: (event) => event.preventDefault(), onclick: action },
+        label,
+      );
+    const richTools = h(
+      "div",
+      { class: "rich-tools", role: "toolbar", "aria-label": "排版" },
+      tool("标题", "大标题", () => toggleBlock("h2")),
+      tool("小标题", "小标题", () => toggleBlock("h3")),
+      tool("B", "加粗", () => command("bold"), "tool-bold"),
+      tool("引用", "引用", () => toggleBlock("blockquote")),
+      tool("• 列表", "列表", () => toggleList("insertUnorderedList")),
+      tool("1. 编号", "编号列表", () => toggleList("insertOrderedList")),
+      tool("☑ 待办", "待办清单", toggleTasks),
+      tool("分割线", "分割线", () => command("insertHorizontalRule")),
+      tool("链接", "给选中的文字加链接", addLink),
+      tool("图片", "插入图片（也可以直接拖进来）", () => fileInput.click(), "tool-image"),
+    );
+    try {
+      document.execCommand("defaultParagraphSeparator", false, "p");
+    } catch {
+      /* 老浏览器不支持也没关系 */
+    }
 
     const fields = () => ({
       title: oneLine(title.value).replace(/^#+\s*/, ""),
@@ -1119,7 +1444,6 @@
     const onChange = () => {
       state.dirty = true;
       writeDraft(draftKey, { slug, ...fields(), savedAt: Date.now() });
-      updatePreview();
     };
     for (const control of [title, date, category, summary, body]) control.addEventListener("input", onChange);
 
@@ -1190,25 +1514,8 @@
       onChange();
     });
 
-    const insertAtCursor = (text) => {
-      const start = body.selectionStart ?? body.value.length;
-      const end = body.selectionEnd ?? body.value.length;
-      const before = body.value.slice(0, start);
-      const prefix = before && !before.endsWith("\n\n") ? (before.endsWith("\n") ? "\n" : "\n\n") : "";
-      body.setRangeText(`${prefix}${text}\n\n`, start, end, "end");
-      body.focus();
-      onChange();
-    };
-
     fileInput.addEventListener("change", async () => {
-      for (const file of fileInput.files) {
-        const image = await prepareImage(file);
-        const name = `${Date.now().toString(36)}-${safeFileName(file.name)}.${image.extension}`;
-        const repoPath = `${CONFIG.uploads}/${slug}/${name}`;
-        const type = image.extension === "jpg" ? "image/jpeg" : file.type;
-        pendingImages.set(repoPath, { bytes: image.bytes, url: URL.createObjectURL(new Blob([image.bytes], { type })) });
-        insertAtCursor(`![](${repoPath})`);
-      }
+      await addImageFiles([...fileInput.files]);
       fileInput.value = "";
     });
 
@@ -1263,23 +1570,18 @@
       }
     };
 
-    const showPane = (pane) => {
-      grid.dataset.pane = pane;
-      paneButtons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.pane === pane)));
+    // 默认是所见即所得；想直接改 Markdown 的话可以切到源码
+    const modeButton = h("button", { class: "btn btn-small", type: "button" }, "Markdown 源码");
+    const setMode = (next) => {
+      mode = next;
+      if (mode === "rich") loadRich();
+      preview.hidden = mode !== "rich";
+      richTools.hidden = mode !== "rich";
+      body.hidden = mode === "rich";
+      modeButton.textContent = mode === "rich" ? "Markdown 源码" : "返回排版模式";
     };
-    const paneButtons = ["edit", "preview"].map((pane) =>
-      h(
-        "button",
-        { class: "pane-tab", type: "button", "data-pane": pane, "aria-pressed": String(pane === "edit"), onclick: () => showPane(pane) },
-        pane === "edit" ? "编辑" : "预览",
-      ),
-    );
-    const grid = h(
-      "div",
-      { class: "editor-grid", "data-pane": "edit" },
-      h("div", { class: "editor-pane editor-pane-edit" }, body),
-      h("div", { class: "editor-pane editor-pane-preview" }, preview),
-    );
+    modeButton.addEventListener("click", () => setMode(mode === "rich" ? "markdown" : "rich"));
+    const grid = h("div", { class: "editor-area" }, richTools, preview, body);
 
     const draftNotice = draftDiffers
       ? h(
@@ -1323,7 +1625,6 @@
         h(
           "div",
           { class: "editor-toolbar" },
-          h("div", { class: "pane-tabs" }, paneButtons),
           h(
             "div",
             { class: "admin-actions" },
@@ -1337,13 +1638,15 @@
                     notify("日记没有模板，直接写就好。");
                     return;
                   }
-                  if (body.value.trim() && !window.confirm("正文里已经有内容了，要把模板加在光标位置吗？")) return;
-                  insertAtCursor(BODY_TEMPLATES[category.value]);
+                  if (body.value.trim() && !window.confirm("正文里已经有内容了，要把模板加在最后吗？")) return;
+                  body.value = `${body.value.trim()}\n\n${BODY_TEMPLATES[category.value]}`.trim();
+                  if (mode === "rich") loadRich();
+                  onChange();
                 },
               },
               "插入正文模板",
             ),
-            h("button", { class: "btn btn-small", type: "button", onclick: () => fileInput.click() }, "插入图片"),
+            modeButton,
           ),
           fileInput,
         ),
@@ -1359,8 +1662,8 @@
     );
     state.dirty = Boolean(draftDiffers);
     renderExtra();
-    updatePreview();
-    (isNew && !initial.title ? title : body).focus({ preventScroll: true });
+    setMode("rich");
+    (isNew && !initial.title ? title : preview).focus({ preventScroll: true });
   }
 
   /* ---------- files ---------- */
